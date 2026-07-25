@@ -69,9 +69,11 @@ interface DictamenResp {
 }
 
 interface Precedente {
-  titulo?: string;
-  senal?: 'positiva' | 'negativa' | 'pendiente' | 'neutra';
-  nota?: string;
+  proyecto?: string;
+  estado?: string;
+  sector?: string;
+  senal?: 'positiva' | 'negativa' | 'pendiente' | 'neutra_debil' | 'sin_clasificar';
+  distancia_m?: number;
 }
 
 interface ProyectoCercano {
@@ -973,12 +975,13 @@ export default function OportunidadesPanel({
                         <p className="text-[11px] font-medium">Precedentes</p>
                         <ul className="space-y-0.5">
                           {response.precedentes.map((p, i) => (
-                            <li key={i} className="text-[11px] flex items-start gap-1.5">
-                              <span>{senalIcon(p.senal)}</span>
-                              <span className="flex-1">
-                                <b>{p.titulo}</b>
-                                {p.nota ? ` — ${p.nota}` : ''}
-                              </span>
+                            <li key={i} className="text-[11px] flex items-center gap-1.5" title={p.proyecto ?? ''}>
+                              <span className="flex-shrink-0">{senalIcon(p.senal)}</span>
+                              <span className="flex-1 min-w-0 truncate font-semibold">{p.proyecto ?? '—'}</span>
+                              {p.estado && (
+                                <span className="text-[10px] text-muted-foreground flex-shrink-0 truncate max-w-[40%]">{p.estado}</span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0 tabular-nums">{formatDistancia(p.distancia_m)}</span>
                             </li>
                           ))}
                         </ul>
