@@ -179,6 +179,66 @@ export default function MapView({
     return () => window.removeEventListener('pric:evalResult', handler);
   }, []);
 
+  // ===== Oportunidades: coherent zoom + restore =====
+  // Save the current camera when the Oportunidades panel opens, allow the
+  // panel to request a fit/flyTo when a result arrives, and restore the
+  // original camera when the panel closes or the user switches away.
+  useEffect(() => {
+    const saved: { current: null | { center: [number, number]; zoom: number; bearing: number; pitch: number } } = { current: null };
+
+    const saveCamera = () => {
+      if (!map.current || saved.current) return;
+      const c = map.current.getCenter();
+      saved.current = {
+        center: [c.lng, c.lat],
+        zoom: map.current.getZoom(),
+        bearing: map.current.getBearing(),
+        pitch: map.current.getPitch(),
+      };
+    };
+
+    const onOpen = () => saveCamera();
+
+    const onFit = (e: Event) => {
+      if (!map.current) return;
+      saveCamera();
+      const detail = (e as CustomEvent).detail as
+        | { points?: [number, number][]; center?: { lat: number; lng: number }; zoom?: number; padding?: number }
+        | undefined;
+      if (!detail) return;
+      const pts = (detail.points || []).filter(
+        (p): p is [number, number] => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])
+      );
+      const padding = detail.padding ?? 120;
+      const maxZoom = detail.zoom ?? 14;
+      if (pts.length >= 2) {
+        const bounds = pts.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(pts[0], pts[0]));
+        map.current.fitBounds(bounds, { padding, maxZoom, duration: 1000, essential: true });
+      } else {
+        const c = detail.center
+          ? ([detail.center.lng, detail.center.lat] as [number, number])
+          : pts[0];
+        if (!c) return;
+        map.current.flyTo({ center: c, zoom: maxZoom, duration: 1000, essential: true });
+      }
+    };
+
+    const onClose = () => {
+      if (!map.current || !saved.current) return;
+      map.current.flyTo({ ...saved.current, duration: 900, essential: true });
+      saved.current = null;
+    };
+
+    window.addEventListener('oportunidades:panelOpen', onOpen);
+    window.addEventListener('oportunidades:fit', onFit as EventListener);
+    window.addEventListener('oportunidades:panelClose', onClose);
+    return () => {
+      window.removeEventListener('oportunidades:panelOpen', onOpen);
+      window.removeEventListener('oportunidades:fit', onFit as EventListener);
+      window.removeEventListener('oportunidades:panelClose', onClose);
+    };
+  }, []);
+
   // Match a value against active PRIC eval zone codes (case-insensitive substring).
   const matchesPricEvalZone = useCallback((...vals: (string | null | undefined)[]) => {
     if (!pricEvalZones || pricEvalZones.length === 0) return true;

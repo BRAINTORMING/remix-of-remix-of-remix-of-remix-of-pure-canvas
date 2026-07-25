@@ -268,6 +268,30 @@ export default function OportunidadesPanel({
     }
   }, [open]);
 
+  // Guardar cámara al abrir el panel y restaurarla al cerrarlo, para que el
+  // mapa siempre vuelva a la posición inicial cuando el usuario sale de una
+  // consulta de Oportunidades.
+  useEffect(() => {
+    if (open) {
+      window.dispatchEvent(new CustomEvent('oportunidades:panelOpen'));
+      return () => {
+        window.dispatchEvent(new CustomEvent('oportunidades:panelClose'));
+      };
+    }
+  }, [open]);
+
+  // Al cambiar de modo o limpiar la respuesta, volver a la posición inicial
+  // del mapa (excepto en "exploración", que ya centra el mapa vía radial:set).
+  useEffect(() => {
+    if (!open) return;
+    if (modo !== 'exploracion') {
+      window.dispatchEvent(new CustomEvent('oportunidades:panelClose'));
+      // Re-armar el save de cámara para la próxima consulta de este modo.
+      window.dispatchEvent(new CustomEvent('oportunidades:panelOpen'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo]);
+
 
 
   // Cargar tipos de proyecto (misma tabla que usa Evaluación PRIC — SSOT)
@@ -428,6 +452,15 @@ export default function OportunidadesPanel({
         // Notificar al mapa para pintar pines/ruta si aplica
         if (modo === 'exploracion' && resp?.candidatos) {
           window.dispatchEvent(new CustomEvent('oportunidades:candidatos', { detail: resp.candidatos }));
+          // El círculo (radial:set) ya centra el mapa en exploración.
+        }
+        if (modo === 'punto_fijo' && currentPoint) {
+          // Zoom al punto evaluado para contextualizarlo con las capas cercanas.
+          window.dispatchEvent(
+            new CustomEvent('oportunidades:fit', {
+              detail: { center: currentPoint, zoom: 15, padding: 120 },
+            }),
+          );
         }
         if (modo === 'camino_minimo' && resp?.ruta) {
           window.dispatchEvent(
@@ -435,6 +468,21 @@ export default function OportunidadesPanel({
               detail: { origen: currentPoint, puntos: resp.ruta },
             }),
           );
+          // Zoom que cubra el origen + los candidatos con coordenadas.
+          const pts: [number, number][] = [];
+          if (currentPoint) pts.push([currentPoint.lng, currentPoint.lat]);
+          resp.ruta.forEach((c) => {
+            if (typeof c.lat === 'number' && typeof c.lon === 'number') {
+              pts.push([c.lon, c.lat]);
+            }
+          });
+          if (pts.length > 0) {
+            window.dispatchEvent(
+              new CustomEvent('oportunidades:fit', {
+                detail: pts.length === 1 ? { center: currentPoint, zoom: 13 } : { points: pts, zoom: 13, padding: 140 },
+              }),
+            );
+          }
         }
       }
     } catch (e) {
