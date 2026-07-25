@@ -452,6 +452,15 @@ export default function OportunidadesPanel({
         // Notificar al mapa para pintar pines/ruta si aplica
         if (modo === 'exploracion' && resp?.candidatos) {
           window.dispatchEvent(new CustomEvent('oportunidades:candidatos', { detail: resp.candidatos }));
+          // El círculo (radial:set) ya centra el mapa en exploración.
+        }
+        if (modo === 'punto_fijo' && currentPoint) {
+          // Zoom al punto evaluado para contextualizarlo con las capas cercanas.
+          window.dispatchEvent(
+            new CustomEvent('oportunidades:fit', {
+              detail: { center: currentPoint, zoom: 15, padding: 120 },
+            }),
+          );
         }
         if (modo === 'camino_minimo' && resp?.ruta) {
           window.dispatchEvent(
@@ -459,8 +468,23 @@ export default function OportunidadesPanel({
               detail: { origen: currentPoint, puntos: resp.ruta },
             }),
           );
+          // Zoom que cubra el origen + los candidatos con coordenadas.
+          const pts: [number, number][] = [];
+          if (currentPoint) pts.push([currentPoint.lng, currentPoint.lat]);
+          resp.ruta.forEach((c) => {
+            if (typeof c.lat === 'number' && typeof c.lon === 'number') {
+              pts.push([c.lon, c.lat]);
+            }
+          });
+          if (pts.length > 0) {
+            window.dispatchEvent(
+              new CustomEvent('oportunidades:fit', {
+                detail: pts.length === 1 ? { center: currentPoint, zoom: 13 } : { points: pts, zoom: 13, padding: 140 },
+              }),
+            );
+          }
         }
-      }
+
     } catch (e) {
       console.error(e);
       setErrorMsg('No fue posible completar la consulta. Intenta nuevamente.');
