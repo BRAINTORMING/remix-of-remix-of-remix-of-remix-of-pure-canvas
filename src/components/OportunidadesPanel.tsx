@@ -484,7 +484,7 @@ export default function OportunidadesPanel({
             );
           }
         }
-
+      }
     } catch (e) {
       console.error(e);
       setErrorMsg('No fue posible completar la consulta. Intenta nuevamente.');
