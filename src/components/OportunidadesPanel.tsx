@@ -69,9 +69,11 @@ interface DictamenResp {
 }
 
 interface Precedente {
-  titulo?: string;
-  senal?: 'positiva' | 'negativa' | 'pendiente' | 'neutra';
-  nota?: string;
+  proyecto?: string;
+  estado?: string;
+  sector?: string;
+  senal?: 'positiva' | 'negativa' | 'pendiente' | 'neutra_debil' | 'sin_clasificar';
+  distancia_m?: number;
 }
 
 interface ProyectoCercano {
