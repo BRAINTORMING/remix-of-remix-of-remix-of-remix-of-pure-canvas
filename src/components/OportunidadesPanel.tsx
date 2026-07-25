@@ -268,6 +268,30 @@ export default function OportunidadesPanel({
     }
   }, [open]);
 
+  // Guardar cámara al abrir el panel y restaurarla al cerrarlo, para que el
+  // mapa siempre vuelva a la posición inicial cuando el usuario sale de una
+  // consulta de Oportunidades.
+  useEffect(() => {
+    if (open) {
+      window.dispatchEvent(new CustomEvent('oportunidades:panelOpen'));
+      return () => {
+        window.dispatchEvent(new CustomEvent('oportunidades:panelClose'));
+      };
+    }
+  }, [open]);
+
+  // Al cambiar de modo o limpiar la respuesta, volver a la posición inicial
+  // del mapa (excepto en "exploración", que ya centra el mapa vía radial:set).
+  useEffect(() => {
+    if (!open) return;
+    if (modo !== 'exploracion') {
+      window.dispatchEvent(new CustomEvent('oportunidades:panelClose'));
+      // Re-armar el save de cámara para la próxima consulta de este modo.
+      window.dispatchEvent(new CustomEvent('oportunidades:panelOpen'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo]);
+
 
 
   // Cargar tipos de proyecto (misma tabla que usa Evaluación PRIC — SSOT)
