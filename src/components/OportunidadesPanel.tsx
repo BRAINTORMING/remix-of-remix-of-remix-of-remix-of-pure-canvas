@@ -44,6 +44,28 @@ interface TipoProyectoRow {
   requiere_superficie_util?: boolean | null;
 }
 
+interface FactorDetectado {
+  factor?: string;
+  puntos?: number;
+  direccion?: 'sube' | 'baja' | string;
+}
+
+interface Narrativa {
+  semaforo?: string;
+  titulo?: string;
+  recomendacion_ejecutiva?: string;
+  factores_detectados?: FactorDetectado[];
+  sugerencias?: string[];
+}
+
+interface Detectamos {
+  proyectos_rechazados_similares?: number;
+  proyectos_cercanos_total?: number;
+  proyectos_mismo_rubro?: number;
+  humedales_cercanos?: number;
+  activos_cercanos?: number;
+}
+
 interface Candidato {
   id?: string;
   nombre?: string;
@@ -56,12 +78,19 @@ interface Candidato {
   costo_contexto?: number;
   // Contexto enriquecido (modos A y C)
   nivel?: 'bajo' | 'medio' | 'alto';
+  semaforo?: string;
   motivo_principal?: string;
   proyectos_cercanos_count?: number;
   humedales_cercanos_count?: number;
   activos_cercanos_count?: number;
   tiene_restriccion_cercana?: boolean;
+  // Nuevo bloque de scoring/narrativa
+  indice_friccion?: number;
+  percentil_texto?: string;
+  detectamos?: Detectamos;
+  narrativa?: Narrativa;
 }
+
 
 interface DictamenResp {
   dictamen?: string;
