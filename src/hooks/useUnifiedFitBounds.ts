@@ -45,26 +45,43 @@ export function useUnifiedFitBounds(
 
   /**
    * Trigger a debounced fitBounds with all registered coordinates.
+   * Options allow focusing on a subset of sources (e.g. only 'planRegulador')
+   * and overriding padding/zoom/duration for a snappier, tighter fit.
    */
-  const triggerFitBounds = useCallback(() => {
+  const triggerFitBounds = useCallback((opts?: {
+    only?: string[];
+    padding?: number;
+    maxZoom?: number;
+    duration?: number;
+    debounceMs?: number;
+  }) => {
     if (timerRef.current) clearTimeout(timerRef.current);
+
+    const wait = opts?.debounceMs ?? debounceMs;
 
     timerRef.current = setTimeout(() => {
       if (!map.current) return;
 
-      // Collect all coordinates from all sources
+      // Collect coordinates (optionally restricted to specific sources)
       const allCoords: [number, number][] = [];
-      coordsRef.current.forEach((coords) => {
+      let usedSources = 0;
+      coordsRef.current.forEach((coords, source) => {
+        if (opts?.only && !opts.only.includes(source)) return;
+        usedSources++;
         allCoords.push(...coords);
       });
 
       if (allCoords.length === 0) return;
 
+      const effPadding = opts?.padding ?? padding;
+      const effMaxZoom = opts?.maxZoom ?? maxZoom;
+      const effDuration = opts?.duration ?? duration;
+
       if (allCoords.length === 1) {
         map.current.flyTo({
           center: allCoords[0],
-          zoom: 12,
-          duration,
+          zoom: Math.min(14, effMaxZoom),
+          duration: effDuration,
           essential: true,
         });
         return;
@@ -76,21 +93,22 @@ export function useUnifiedFitBounds(
       );
 
       // Smart padding: more padding when fewer sources, less when showing full country
-      const sourceCount = coordsRef.current.size;
-      const dynamicPadding = sourceCount <= 1 ? padding : Math.max(40, padding - sourceCount * 10);
+      const sourceCount = usedSources;
+      const dynamicPadding = sourceCount <= 1 ? effPadding : Math.max(40, effPadding - sourceCount * 10);
 
       // Smart maxZoom: if single polygon, allow closer zoom
       const totalPoints = allCoords.length;
-      const dynamicMaxZoom = totalPoints <= 20 ? maxZoom + 2 : maxZoom;
+      const dynamicMaxZoom = totalPoints <= 20 ? effMaxZoom + 2 : effMaxZoom;
 
       map.current.fitBounds(bounds, {
         padding: dynamicPadding,
         maxZoom: dynamicMaxZoom,
-        duration,
+        duration: effDuration,
         essential: true,
       });
-    }, debounceMs);
+    }, wait);
   }, [map, debounceMs, padding, maxZoom, duration]);
+
 
   /**
    * Clear all sources and optionally trigger a reset.
