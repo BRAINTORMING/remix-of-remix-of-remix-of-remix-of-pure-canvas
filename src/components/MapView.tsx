@@ -1054,9 +1054,20 @@ export default function MapView({
       ? (allPlanRegulador || []).filter(pr => matchesPricEvalZone(pr.capa))
       : (filters.planRegulador || []);
 
+    // Each row of poligonos_pric is its own polygon; several rows share the
+    // same `capa` (nombre — categoría), so the key must include the geometry
+    // to avoid collapsing an entire área into a single polygon.
+    const hashCoords = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+      return Math.abs(h).toString(36);
+    };
+    const keyFor = (p: PlanReguladorData) =>
+      `planregulador::${p.capa}::${hashCoords(p.coordenadas || '')}`;
+
     const mergedMap = new Map<string, PlanReguladorData>();
     baseSelected.forEach(p => {
-      const k = `planregulador::${p.capa}`;
+      const k = keyFor(p);
       if (!mergedMap.has(k)) mergedMap.set(k, p);
     });
     const selectedPlanRegulador = Array.from(mergedMap.values());
@@ -1070,7 +1081,7 @@ export default function MapView({
       return isPolygonInSelectedComunas(pr.coordenadas);
     });
     
-    const selectedKeys = new Set(filteredPlanRegulador.map(p => `planregulador::${p.capa}`));
+    const selectedKeys = new Set(filteredPlanRegulador.map(p => keyFor(p)));
     
     // Remove layers that are no longer selected
     const keysToRemove: string[] = [];
@@ -1084,18 +1095,20 @@ export default function MapView({
     if (filteredPlanRegulador.length === 0) {
       setSourceCoords('planRegulador', []);
       setResultCounts(prev => ({ ...prev, planRegulador: 0 }));
+      // Re-encuadrar a lo que quede visible (comunas, activos, etc.)
+      triggerFitBounds({ padding: 60, duration: 700, debounceMs: 120 });
       return;
     }
     
     // Load all selected plan regulador layers
-    const loadAndZoomPlanRegulador = async () => {
+    const loadAndZoomPlanRegulador = () => {
       const allCoords: [number, number][] = [];
       
       filteredPlanRegulador.forEach(pr => {
-        const key = `planregulador::${pr.capa}`;
+        const key = keyFor(pr);
         
         if (!loadedPlanReguladorRef.current.has(key)) {
-          const coords = loadPlanReguladorGeoJSON(pr);
+          const coords = loadPlanReguladorGeoJSON(pr, key);
           allCoords.push(...coords);
         } else {
           const coords = extractCoordsFromGeoJSON(pr.coordenadas);
@@ -1103,16 +1116,24 @@ export default function MapView({
         }
       });
       
-      // Register with unified fitBounds
+      // Register with unified fitBounds and zoom ONLY to the PRIC selection so
+      // los polígonos se vean grandes y centrados (no diluidos por la comuna).
       if (allCoords.length > 0) {
         setSourceCoords('planRegulador', allCoords);
         setResultCounts(prev => ({ ...prev, planRegulador: filteredPlanRegulador.length }));
-        triggerFitBounds();
+        triggerFitBounds({
+          only: ['planRegulador'],
+          padding: 50,
+          maxZoom: 16,
+          duration: 700,
+          debounceMs: 120,
+        });
       }
     };
     
     loadAndZoomPlanRegulador();
-  }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone]);
+  }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone, setSourceCoords, triggerFitBounds]);
+
 
   // Extract coordinates from GeoJSON string
   const extractCoordsFromGeoJSON = (geoJsonString: string): [number, number][] => {
