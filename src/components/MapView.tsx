@@ -871,14 +871,15 @@ export default function MapView({
   }, [filters.poligonos, filters.comunas, isPolygonInSelectedComunas, matchesPricEvalZone]);
 
   // Load Plan Regulador GeoJSON and add to map
-  const loadPlanReguladorGeoJSON = (planRegulador: PlanReguladorData): [number, number][] => {
+  const loadPlanReguladorGeoJSON = (planRegulador: PlanReguladorData, keyOverride?: string): [number, number][] => {
     if (!map.current) return [];
 
-    const key = `planregulador::${planRegulador.capa}`;
+    const key = keyOverride || `planregulador::${planRegulador.capa}`;
     
     if (loadedPlanReguladorRef.current.has(key)) {
       return extractCoordsFromGeoJSON(planRegulador.coordenadas);
     }
+
 
     try {
       const geojsonData = JSON.parse(planRegulador.coordenadas);
