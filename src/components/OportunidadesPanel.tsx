@@ -1095,13 +1095,16 @@ export default function OportunidadesPanel({
 
 
             {/* Modo B */}
-            {(response.respuesta_narrativa || response.contexto_enriquecido || (response.citas_normativa && response.citas_normativa.length > 0)) && (
+            {(response.narrativa || response.respuesta_narrativa || response.contexto_enriquecido || (response.citas_normativa && response.citas_normativa.length > 0)) && (
               <div className="space-y-2.5">
-                {response.respuesta_narrativa && (
+                {response.narrativa && <NarrativaBlock narrativa={response.narrativa} />}
+
+                {!response.narrativa && response.respuesta_narrativa && (
                   <div className="prose prose-sm max-w-none text-foreground">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{response.respuesta_narrativa}</ReactMarkdown>
                   </div>
                 )}
+
 
                 {/* Aviso destacado si el punto está sobre una restricción directa */}
                 {response.contexto_enriquecido?.tiene_restriccion_directa && (
