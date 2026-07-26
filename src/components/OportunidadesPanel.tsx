@@ -142,6 +142,11 @@ interface ConsultarViabilidadResponse {
   candidatos?: Candidato[];
   ruta?: Candidato[];
   respuesta_narrativa?: string;
+  narrativa?: Narrativa;
+  resumen_comparativo?: {
+    mensaje?: string;
+    mejor_alternativa_etiqueta?: string;
+  } | null;
   dictamen?: DictamenResp;
   costo_contexto_detalle?: Array<{ etiqueta: string; valor: number }>;
   precedentes?: Precedente[];
