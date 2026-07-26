@@ -1325,7 +1325,7 @@ export function PlanReguladorSection() {
                         </button>
                         <Checkbox
                           id={`pric-n-${nombre}`}
-                          checked={full}
+                          checked={full ? true : partial ? "indeterminate" : false}
                           onCheckedChange={() => ctx.togglePricNombre(nombre)}
                           className={cn(
                             "h-3.5 w-3.5 border-amber-300",
