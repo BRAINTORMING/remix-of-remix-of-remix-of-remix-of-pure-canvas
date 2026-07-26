@@ -1045,7 +1045,13 @@ export default function MapView({
 
   // Handle Plan Regulador filter changes
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return;
+    const m = map.current;
+    if (!m) return;
+    let cancelled = false;
+
+    const applyPric = () => {
+    if (cancelled || !map.current) return;
+
 
     // In PRIC eval mode: force-load only the polygons matching the evaluated
     // zones (from allPlanRegulador), regardless of the user's filter selection.
