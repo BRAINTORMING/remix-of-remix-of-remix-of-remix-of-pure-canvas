@@ -1078,7 +1078,7 @@ export default function MapView({
     });
     const selectedPlanRegulador = Array.from(mergedMap.values());
 
-    const filteredPlanRegulador = selectedPlanRegulador.filter(pr => {
+    const byComuna = selectedPlanRegulador.filter(pr => {
       // Do NOT apply comuna filter in PRIC eval mode — we want the exact zones.
       if (pricEvalZones && pricEvalZones.length > 0) return true;
       if (!filters.comunas || filters.comunas.length === 0) {
@@ -1086,6 +1086,10 @@ export default function MapView({
       }
       return isPolygonInSelectedComunas(pr.coordenadas);
     });
+    // Si el filtro por comuna descarta todo (datos sin match geométrico),
+    // mostramos igualmente la selección del usuario en vez de dejar el mapa vacío.
+    const filteredPlanRegulador = byComuna.length > 0 ? byComuna : selectedPlanRegulador;
+
     
     const selectedKeys = new Set(filteredPlanRegulador.map(p => keyFor(p)));
     
