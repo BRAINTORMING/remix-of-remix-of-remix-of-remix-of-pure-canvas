@@ -44,6 +44,28 @@ interface TipoProyectoRow {
   requiere_superficie_util?: boolean | null;
 }
 
+interface FactorDetectado {
+  factor?: string;
+  puntos?: number;
+  direccion?: 'sube' | 'baja' | string;
+}
+
+interface Narrativa {
+  semaforo?: string;
+  titulo?: string;
+  recomendacion_ejecutiva?: string;
+  factores_detectados?: FactorDetectado[];
+  sugerencias?: string[];
+}
+
+interface Detectamos {
+  proyectos_rechazados_similares?: number;
+  proyectos_cercanos_total?: number;
+  proyectos_mismo_rubro?: number;
+  humedales_cercanos?: number;
+  activos_cercanos?: number;
+}
+
 interface Candidato {
   id?: string;
   nombre?: string;
@@ -56,12 +78,19 @@ interface Candidato {
   costo_contexto?: number;
   // Contexto enriquecido (modos A y C)
   nivel?: 'bajo' | 'medio' | 'alto';
+  semaforo?: string;
   motivo_principal?: string;
   proyectos_cercanos_count?: number;
   humedales_cercanos_count?: number;
   activos_cercanos_count?: number;
   tiene_restriccion_cercana?: boolean;
+  // Nuevo bloque de scoring/narrativa
+  indice_friccion?: number;
+  percentil_texto?: string;
+  detectamos?: Detectamos;
+  narrativa?: Narrativa;
 }
+
 
 interface DictamenResp {
   dictamen?: string;
@@ -113,6 +142,11 @@ interface ConsultarViabilidadResponse {
   candidatos?: Candidato[];
   ruta?: Candidato[];
   respuesta_narrativa?: string;
+  narrativa?: Narrativa;
+  resumen_comparativo?: {
+    mensaje?: string;
+    mejor_alternativa_etiqueta?: string;
+  } | null;
   dictamen?: DictamenResp;
   costo_contexto_detalle?: Array<{ etiqueta: string; valor: number }>;
   precedentes?: Precedente[];
@@ -197,6 +231,124 @@ function estadoBadgeCls(estado?: string): { cls: string; icon: string } {
   if (e.includes('calific') || e.includes('trámite') || e.includes('tramite') || e.includes('evaluacion') || e.includes('evaluación'))
     return { cls: 'bg-amber-500/15 text-amber-700 border border-amber-500/30', icon: '⏳' };
   return { cls: 'bg-muted text-muted-foreground border border-border', icon: '•' };
+}
+
+function frictionBarCls(v: number): string {
+  if (v >= 67) return 'bg-red-500';
+  if (v >= 34) return 'bg-amber-500';
+  return 'bg-emerald-500';
+}
+
+/** Quita la primera línea (semáforo + título) del texto ejecutivo. */
+function cuerpoRecomendacion(txt?: string): string {
+  if (!txt) return '';
+  const parts = txt.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (parts.length > 1) return parts.slice(1).join('\n\n');
+  return parts[0] ?? '';
+}
+
+function NarrativaBlock({
+  narrativa,
+  indiceFriccion,
+  percentilTexto,
+  detectamos,
+  compact,
+}: {
+  narrativa?: Narrativa;
+  indiceFriccion?: number;
+  percentilTexto?: string;
+  detectamos?: Detectamos;
+  compact?: boolean;
+}) {
+  if (!narrativa && indiceFriccion == null && !detectamos) return null;
+  const cuerpo = cuerpoRecomendacion(narrativa?.recomendacion_ejecutiva);
+  const idx = typeof indiceFriccion === 'number' ? Math.max(0, Math.min(100, indiceFriccion)) : null;
+
+  return (
+    <div className={cn('space-y-2', compact ? '' : 'rounded-lg border border-border bg-background/60 p-3')}>
+      {(narrativa?.semaforo || narrativa?.titulo) && (
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">{narrativa?.semaforo}</span>
+          <span className="text-sm font-bold tracking-tight text-foreground">{narrativa?.titulo}</span>
+        </div>
+      )}
+
+      {idx != null && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice de fricción</span>
+            <span className="text-[11px] font-semibold text-foreground">{Math.round(idx)}/100</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+            <div className={cn('h-full rounded-full transition-all', frictionBarCls(idx))} style={{ width: `${idx}%` }} />
+          </div>
+          {percentilTexto && (
+            <p className="mt-1 text-[10px] text-muted-foreground leading-snug">{percentilTexto}</p>
+          )}
+        </div>
+      )}
+
+      {cuerpo && <p className="text-[11px] text-foreground/80 leading-snug whitespace-pre-line">{cuerpo}</p>}
+
+      {narrativa?.factores_detectados && narrativa.factores_detectados.length > 0 && (
+        <ul className="space-y-0.5">
+          {narrativa.factores_detectados.map((f, i) => (
+            <li key={i} className="flex items-start gap-1.5 text-[11px] text-foreground/80">
+              <span className="leading-none mt-0.5">{f.direccion === 'baja' ? '🔻' : '🔺'}</span>
+              <span className="flex-1 leading-snug">{f.factor}</span>
+              {f.puntos != null && (
+                <span className="text-[10px] font-semibold text-muted-foreground flex-shrink-0">
+                  {f.direccion === 'baja' ? '-' : '+'}
+                  {Math.abs(Number(f.puntos)).toFixed(1)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {detectamos && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!!detectamos.proyectos_cercanos_total && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+              🏗️ {detectamos.proyectos_cercanos_total} proyectos cerca
+            </span>
+          )}
+          {!!detectamos.proyectos_rechazados_similares && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 text-red-700 border border-red-500/20 text-[10px] px-1.5 py-0.5">
+              ❌ {detectamos.proyectos_rechazados_similares} rechazados
+            </span>
+          )}
+          {!!detectamos.proyectos_mismo_rubro && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+              🏭 {detectamos.proyectos_mismo_rubro} del mismo rubro
+            </span>
+          )}
+          {!!detectamos.humedales_cercanos && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[10px] px-1.5 py-0.5">
+              💧 {detectamos.humedales_cercanos} humedales cerca
+            </span>
+          )}
+          {!!detectamos.activos_cercanos && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+              📍 {detectamos.activos_cercanos} activo{detectamos.activos_cercanos === 1 ? '' : 's'} cerca
+            </span>
+          )}
+        </div>
+      )}
+
+      {narrativa?.sugerencias && narrativa.sugerencias.length > 0 && (
+        <ul className="space-y-0.5 pt-0.5">
+          {narrativa.sugerencias.map((s, i) => (
+            <li key={i} className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-snug">
+              <span className="text-emerald-600 leading-none mt-0.5">✓</span>
+              <span className="flex-1">{s}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 
@@ -800,14 +952,51 @@ export default function OportunidadesPanel({
             {/* Modo A */}
             {response.candidatos && response.candidatos.length > 0 && (
               <div className="space-y-2">
+                {response.resumen_comparativo?.mensaje && (
+                  <div className="rounded-lg border border-primary/40 bg-primary/5 px-3 py-2.5 flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-foreground leading-snug">
+                        {response.resumen_comparativo.mensaje}
+                      </p>
+                      {response.resumen_comparativo.mejor_alternativa_etiqueta && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-1.5 h-6 text-[10px] px-2"
+                          onClick={() => {
+                            const et = response.resumen_comparativo?.mejor_alternativa_etiqueta;
+                            const target = (response.candidatos || []).find(
+                              (x) => x.etiqueta === et || x.nombre === et,
+                            );
+                            if (target?.lat != null && target?.lon != null) {
+                              window.dispatchEvent(
+                                new CustomEvent('oportunidades:fit', {
+                                  detail: { center: { lat: target.lat, lng: target.lon }, zoom: 14 },
+                                }),
+                              );
+                            } else {
+                              toast({
+                                title: 'Sin coordenadas',
+                                description: 'La alternativa sugerida no trae ubicación para centrar el mapa.',
+                              });
+                            }
+                          }}
+                        >
+                          Ver esa zona <ArrowRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <p className="text-[10px] text-muted-foreground italic">
                   Vista exploratoria — sin dictamen definitivo. Haz clic en “Evaluar en detalle” para un análisis completo.
                 </p>
                 {response.candidatos.map((c, i) => (
-                  <div key={c.id ?? i} className="rounded-lg border border-border p-2.5 bg-background/60">
+                  <div key={c.id ?? i} className="rounded-lg border border-border p-2.5 bg-background/60 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className={cn('h-2.5 w-2.5 rounded-full flex-shrink-0', colorDotByNivel(c.nivel))} />
-                      <span className="text-xs font-semibold text-foreground flex-1 truncate">
+                      <span className="text-xs font-semibold text-foreground flex-1 truncate" title={c.nombre ?? c.etiqueta}>
                         {c.nombre ?? c.etiqueta ?? 'Zona candidata'}
                       </span>
                       <span className="text-[10px] text-muted-foreground flex-shrink-0">
@@ -815,29 +1004,38 @@ export default function OportunidadesPanel({
                       </span>
                     </div>
                     {c.motivo_principal && (
-                      <p className="mt-1 text-[10px] text-muted-foreground leading-snug pl-4">{c.motivo_principal}</p>
+                      <p className="text-[10px] text-muted-foreground leading-snug">{c.motivo_principal}</p>
                     )}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-4">
-                      {c.proyectos_cercanos_count != null && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-                          🏗️ {c.proyectos_cercanos_count} proyectos cerca
-                        </span>
-                      )}
-                      {c.humedales_cercanos_count != null && c.humedales_cercanos_count > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[10px] px-1.5 py-0.5">
-                          💧 {c.humedales_cercanos_count} humedal{c.humedales_cercanos_count === 1 ? '' : 'es'} cerca
-                        </span>
-                      )}
-                      {c.activos_cercanos_count != null && c.activos_cercanos_count > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-                          📍 {c.activos_cercanos_count} activo{c.activos_cercanos_count === 1 ? '' : 's'} cerca
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between pl-4">
-                      <span className="text-[10px] text-muted-foreground">
-                        Costo relativo: <b>{c.costo_contexto ?? '—'}</b>
-                      </span>
+
+                    <NarrativaBlock
+                      compact
+                      narrativa={c.narrativa}
+                      indiceFriccion={c.indice_friccion}
+                      percentilTexto={c.percentil_texto}
+                      detectamos={c.detectamos}
+                    />
+
+                    {!c.detectamos && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {c.proyectos_cercanos_count != null && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+                            🏗️ {c.proyectos_cercanos_count} proyectos cerca
+                          </span>
+                        )}
+                        {!!c.humedales_cercanos_count && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[10px] px-1.5 py-0.5">
+                            💧 {c.humedales_cercanos_count} humedal{c.humedales_cercanos_count === 1 ? '' : 'es'} cerca
+                          </span>
+                        )}
+                        {!!c.activos_cercanos_count && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+                            📍 {c.activos_cercanos_count} activo{c.activos_cercanos_count === 1 ? '' : 's'} cerca
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end">
                       <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => precargarModoB(c)}>
                         Evaluar en detalle <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>
@@ -846,6 +1044,7 @@ export default function OportunidadesPanel({
                 ))}
               </div>
             )}
+
 
             {/* Modo C */}
             {response.ruta && response.ruta.length > 0 && (
@@ -863,17 +1062,27 @@ export default function OportunidadesPanel({
                       <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                         {i + 1}
                       </span>
-                      <span className="text-xs flex-1 truncate">{c.nombre ?? c.etiqueta ?? 'Candidato'}</span>
+                      <span className="text-xs flex-1 truncate" title={c.nombre ?? c.etiqueta}>
+                        {c.nombre ?? c.etiqueta ?? 'Candidato'}
+                      </span>
+                      <span
+                        className="text-sm leading-none flex-shrink-0"
+                        aria-label={`Costo relativo ${c.nivel ?? ''}`}
+                        title={c.nivel ? `Costo relativo ${c.nivel}` : undefined}
+                      >
+                        {c.semaforo ?? (c.nivel === 'alto' ? '🟠' : c.nivel === 'medio' ? '🟡' : '🟢')}
+                      </span>
                       {c.tiene_restriccion_cercana && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-amber-600 text-sm leading-none" aria-label="Restricción cercana">⚠️</span>
+                            <span className="text-amber-600 text-xs leading-none" aria-label="Restricción cercana">⚠️</span>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[220px] text-[11px]">
                             Esta zona tiene una restricción registrada cerca — revísala en detalle antes de decidir.
                           </TooltipContent>
                         </Tooltip>
                       )}
+
                       <span className="text-[10px] text-muted-foreground flex-shrink-0">
                         {formatDistancia(c.distancia_m)}
                       </span>
@@ -886,13 +1095,16 @@ export default function OportunidadesPanel({
 
 
             {/* Modo B */}
-            {(response.respuesta_narrativa || response.contexto_enriquecido || (response.citas_normativa && response.citas_normativa.length > 0)) && (
+            {(response.narrativa || response.respuesta_narrativa || response.contexto_enriquecido || (response.citas_normativa && response.citas_normativa.length > 0)) && (
               <div className="space-y-2.5">
-                {response.respuesta_narrativa && (
+                {response.narrativa && <NarrativaBlock narrativa={response.narrativa} />}
+
+                {!response.narrativa && response.respuesta_narrativa && (
                   <div className="prose prose-sm max-w-none text-foreground">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{response.respuesta_narrativa}</ReactMarkdown>
                   </div>
                 )}
+
 
                 {/* Aviso destacado si el punto está sobre una restricción directa */}
                 {response.contexto_enriquecido?.tiene_restriccion_directa && (
