@@ -1062,17 +1062,27 @@ export default function OportunidadesPanel({
                       <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                         {i + 1}
                       </span>
-                      <span className="text-xs flex-1 truncate">{c.nombre ?? c.etiqueta ?? 'Candidato'}</span>
+                      <span className="text-xs flex-1 truncate" title={c.nombre ?? c.etiqueta}>
+                        {c.nombre ?? c.etiqueta ?? 'Candidato'}
+                      </span>
+                      <span
+                        className="text-sm leading-none flex-shrink-0"
+                        aria-label={`Costo relativo ${c.nivel ?? ''}`}
+                        title={c.nivel ? `Costo relativo ${c.nivel}` : undefined}
+                      >
+                        {c.semaforo ?? (c.nivel === 'alto' ? '🟠' : c.nivel === 'medio' ? '🟡' : '🟢')}
+                      </span>
                       {c.tiene_restriccion_cercana && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-amber-600 text-sm leading-none" aria-label="Restricción cercana">⚠️</span>
+                            <span className="text-amber-600 text-xs leading-none" aria-label="Restricción cercana">⚠️</span>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[220px] text-[11px]">
                             Esta zona tiene una restricción registrada cerca — revísala en detalle antes de decidir.
                           </TooltipContent>
                         </Tooltip>
                       )}
+
                       <span className="text-[10px] text-muted-foreground flex-shrink-0">
                         {formatDistancia(c.distancia_m)}
                       </span>
