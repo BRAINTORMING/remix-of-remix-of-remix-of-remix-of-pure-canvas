@@ -1138,7 +1138,17 @@ export default function MapView({
     };
     
     loadAndZoomPlanRegulador();
+    };
+
+    if (m.isStyleLoaded()) applyPric();
+    else m.once('idle', applyPric);
+
+    return () => {
+      cancelled = true;
+      m.off('idle', applyPric);
+    };
   }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone, setSourceCoords, triggerFitBounds]);
+
 
 
   // Extract coordinates from GeoJSON string
