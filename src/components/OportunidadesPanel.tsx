@@ -233,6 +233,124 @@ function estadoBadgeCls(estado?: string): { cls: string; icon: string } {
   return { cls: 'bg-muted text-muted-foreground border border-border', icon: '•' };
 }
 
+function frictionBarCls(v: number): string {
+  if (v >= 67) return 'bg-red-500';
+  if (v >= 34) return 'bg-amber-500';
+  return 'bg-emerald-500';
+}
+
+/** Quita la primera línea (semáforo + título) del texto ejecutivo. */
+function cuerpoRecomendacion(txt?: string): string {
+  if (!txt) return '';
+  const parts = txt.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (parts.length > 1) return parts.slice(1).join('\n\n');
+  return parts[0] ?? '';
+}
+
+function NarrativaBlock({
+  narrativa,
+  indiceFriccion,
+  percentilTexto,
+  detectamos,
+  compact,
+}: {
+  narrativa?: Narrativa;
+  indiceFriccion?: number;
+  percentilTexto?: string;
+  detectamos?: Detectamos;
+  compact?: boolean;
+}) {
+  if (!narrativa && indiceFriccion == null && !detectamos) return null;
+  const cuerpo = cuerpoRecomendacion(narrativa?.recomendacion_ejecutiva);
+  const idx = typeof indiceFriccion === 'number' ? Math.max(0, Math.min(100, indiceFriccion)) : null;
+
+  return (
+    <div className={cn('space-y-2', compact ? '' : 'rounded-lg border border-border bg-background/60 p-3')}>
+      {(narrativa?.semaforo || narrativa?.titulo) && (
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">{narrativa?.semaforo}</span>
+          <span className="text-sm font-bold tracking-tight text-foreground">{narrativa?.titulo}</span>
+        </div>
+      )}
+
+      {idx != null && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice de fricción</span>
+            <span className="text-[11px] font-semibold text-foreground">{Math.round(idx)}/100</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+            <div className={cn('h-full rounded-full transition-all', frictionBarCls(idx))} style={{ width: `${idx}%` }} />
+          </div>
+          {percentilTexto && (
+            <p className="mt-1 text-[10px] text-muted-foreground leading-snug">{percentilTexto}</p>
+          )}
+        </div>
+      )}
+
+      {cuerpo && <p className="text-[11px] text-foreground/80 leading-snug whitespace-pre-line">{cuerpo}</p>}
+
+      {narrativa?.factores_detectados && narrativa.factores_detectados.length > 0 && (
+        <ul className="space-y-0.5">
+          {narrativa.factores_detectados.map((f, i) => (
+            <li key={i} className="flex items-start gap-1.5 text-[11px] text-foreground/80">
+              <span className="leading-none mt-0.5">{f.direccion === 'baja' ? '🔻' : '🔺'}</span>
+              <span className="flex-1 leading-snug">{f.factor}</span>
+              {f.puntos != null && (
+                <span className="text-[10px] font-semibold text-muted-foreground flex-shrink-0">
+                  {f.direccion === 'baja' ? '-' : '+'}
+                  {Math.abs(Number(f.puntos)).toFixed(1)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {detectamos && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!!detectamos.proyectos_cercanos_total && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+              🏗️ {detectamos.proyectos_cercanos_total} proyectos cerca
+            </span>
+          )}
+          {!!detectamos.proyectos_rechazados_similares && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 text-red-700 border border-red-500/20 text-[10px] px-1.5 py-0.5">
+              ❌ {detectamos.proyectos_rechazados_similares} rechazados
+            </span>
+          )}
+          {!!detectamos.proyectos_mismo_rubro && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+              🏭 {detectamos.proyectos_mismo_rubro} del mismo rubro
+            </span>
+          )}
+          {!!detectamos.humedales_cercanos && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[10px] px-1.5 py-0.5">
+              💧 {detectamos.humedales_cercanos} humedales cerca
+            </span>
+          )}
+          {!!detectamos.activos_cercanos && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
+              📍 {detectamos.activos_cercanos} activo{detectamos.activos_cercanos === 1 ? '' : 's'} cerca
+            </span>
+          )}
+        </div>
+      )}
+
+      {narrativa?.sugerencias && narrativa.sugerencias.length > 0 && (
+        <ul className="space-y-0.5 pt-0.5">
+          {narrativa.sugerencias.map((s, i) => (
+            <li key={i} className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-snug">
+              <span className="text-emerald-600 leading-none mt-0.5">✓</span>
+              <span className="flex-1">{s}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 
 interface OportunidadesPanelProps {
   /** Controls visibility of the side drawer */
