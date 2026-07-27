@@ -131,6 +131,10 @@ interface SidebarFiltersContextValue {
   // Planes Reguladores (PRIC — table poligonos_pric)
   pricNombres: string[];
   pricCategoriasByNombre: Record<string, string[]>;
+  // Polygon counts: per nombre_zona_pric and per `${nombre}::${categoria}` key.
+  pricCountByNombre: Record<string, number>;
+  pricCountByCategoria: Record<string, number>;
+  pricTotalPoligonos: number;
   // Composite keys `${nombre_zona_pric}::${categoria_zona_pric}` — each key
   // corresponds to the set of polygons sharing that (nombre, categoria) pair.
   selectedPricKeys: string[];
@@ -235,6 +239,9 @@ export function SidebarFiltersProvider({
   // PRIC (poligonos_pric) — nombre_zona_pric + categoria_zona_pric
   const [pricNombres, setPricNombres] = useState<string[]>([]);
   const [pricCategoriasByNombre, setPricCategoriasByNombre] = useState<Record<string, string[]>>({});
+  const [pricCountByNombre, setPricCountByNombre] = useState<Record<string, number>>({});
+  const [pricCountByCategoria, setPricCountByCategoria] = useState<Record<string, number>>({});
+  const [pricTotalPoligonos, setPricTotalPoligonos] = useState(0);
   const [selectedPricKeys, setSelectedPricKeys] = useState<string[]>([]);
   const [pricLimiteEnabled, setPricLimiteEnabled] = useState(false);
   const [allPlanReguladorData, setAllPlanReguladorData] = useState<(PlanReguladorData & { nombre?: string; categoria?: string })[]>([]);
@@ -523,11 +530,16 @@ export function SidebarFiltersProvider({
 
       setAllPlanReguladorData(mapped);
 
-      // Group categorias by nombre for the UI.
+      // Group categorias by nombre for the UI + count polygons per level.
       const byNombre: Record<string, Set<string>> = {};
+      const countNombre: Record<string, number> = {};
+      const countCategoria: Record<string, number> = {};
       mapped.forEach((m) => {
         if (!byNombre[m.nombre]) byNombre[m.nombre] = new Set();
         byNombre[m.nombre].add(m.categoria);
+        countNombre[m.nombre] = (countNombre[m.nombre] || 0) + 1;
+        const k = `${m.nombre}::${m.categoria}`;
+        countCategoria[k] = (countCategoria[k] || 0) + 1;
       });
       const nombres = Object.keys(byNombre).sort((a, b) => a.localeCompare(b));
       const byNombreArr: Record<string, string[]> = {};
@@ -536,6 +548,9 @@ export function SidebarFiltersProvider({
       });
       setPricNombres(nombres);
       setPricCategoriasByNombre(byNombreArr);
+      setPricCountByNombre(countNombre);
+      setPricCountByCategoria(countCategoria);
+      setPricTotalPoligonos(mapped.length);
     } catch (e) { console.error(e); }
   }
 
@@ -776,6 +791,9 @@ export function SidebarFiltersProvider({
     areAllMedioambienteCategoriaGroupSelected,
     pricNombres,
     pricCategoriasByNombre,
+    pricCountByNombre,
+    pricCountByCategoria,
+    pricTotalPoligonos,
     selectedPricKeys,
     togglePricNombre,
     togglePricCategoria,
@@ -1275,7 +1293,7 @@ export function PlanReguladorSection() {
               {/* Header + acciones globales */}
               <div className="flex items-center justify-between px-1">
                 <p className="text-[9.5px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
-                  Nombre de la Zona
+                  Nombre de la Zona · {ctx.pricTotalPoligonos} polígonos
                 </p>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -1302,6 +1320,7 @@ export function PlanReguladorSection() {
                   const cats = ctx.pricCategoriasByNombre[nombre] || [];
                   const expanded = expandedNombres.includes(nombre);
                   const selCount = cats.filter(c => ctx.isPricCategoriaSelected(nombre, c)).length;
+                  const polCount = ctx.pricCountByNombre[nombre] || 0;
                   return (
                     <div
                       key={nombre}
@@ -1339,13 +1358,16 @@ export function PlanReguladorSection() {
                         >
                           {nombre}
                         </Label>
-                        <span className={cn(
-                          "text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full",
-                          selCount > 0
-                            ? "bg-amber-500 text-white"
-                            : "bg-amber-100 text-amber-700"
-                        )}>
-                          {selCount > 0 ? `${selCount}/${cats.length}` : cats.length}
+                        <span
+                          title={`${cats.length} categorías · ${polCount} polígonos`}
+                          className={cn(
+                            "text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full",
+                            selCount > 0
+                              ? "bg-amber-500 text-white"
+                              : "bg-amber-100 text-amber-700"
+                          )}
+                        >
+                          {selCount > 0 ? `${selCount}/${cats.length} · ${polCount}` : `${cats.length} · ${polCount}`}
                         </span>
                       </div>
                       {expanded && cats.length > 0 && (
@@ -1372,6 +1394,12 @@ export function PlanReguladorSection() {
                                 >
                                   {cat}
                                 </Label>
+                                <span
+                                  title={`${ctx.pricCountByCategoria[`${nombre}::${cat}`] || 0} polígonos`}
+                                  className="text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0"
+                                >
+                                  {ctx.pricCountByCategoria[`${nombre}::${cat}`] || 0}
+                                </span>
                               </div>
                             );
                           })}
