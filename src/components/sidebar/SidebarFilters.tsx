@@ -131,6 +131,10 @@ interface SidebarFiltersContextValue {
   // Planes Reguladores (PRIC — table poligonos_pric)
   pricNombres: string[];
   pricCategoriasByNombre: Record<string, string[]>;
+  // Polygon counts: per nombre_zona_pric and per `${nombre}::${categoria}` key.
+  pricCountByNombre: Record<string, number>;
+  pricCountByCategoria: Record<string, number>;
+  pricTotalPoligonos: number;
   // Composite keys `${nombre_zona_pric}::${categoria_zona_pric}` — each key
   // corresponds to the set of polygons sharing that (nombre, categoria) pair.
   selectedPricKeys: string[];
