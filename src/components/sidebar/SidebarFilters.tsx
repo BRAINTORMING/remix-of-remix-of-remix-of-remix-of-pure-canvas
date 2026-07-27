@@ -1293,7 +1293,7 @@ export function PlanReguladorSection() {
               {/* Header + acciones globales */}
               <div className="flex items-center justify-between px-1">
                 <p className="text-[9.5px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
-                  Nombre de la Zona
+                  Nombre de la Zona · {ctx.pricTotalPoligonos} polígonos
                 </p>
                 <div className="flex items-center gap-1.5">
                   <button
