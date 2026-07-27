@@ -42,6 +42,11 @@ interface DictamenInstrumento {
   patrimonio_detectado?: Array<{ capa?: string; codigo_zona?: string }>;
 }
 
+interface NarrativaInstrumento {
+  instrumento: string;
+  narrativa: string;
+}
+
 interface EvaluacionResultado {
   resuelto?: boolean;
   motivo?: string;
@@ -49,6 +54,7 @@ interface EvaluacionResultado {
   comuna?: string;
   region?: string;
   dictamenes_por_instrumento?: DictamenInstrumento[];
+  narrativas?: NarrativaInstrumento[];
   estacionamientos?: { cupos_requeridos?: number; nota?: string } | null;
   restricciones_ambientales_universales?: Array<{ capa: string }>;
   dentro_limite_oficial_pric?: boolean;
