@@ -239,6 +239,9 @@ export function SidebarFiltersProvider({
   // PRIC (poligonos_pric) — nombre_zona_pric + categoria_zona_pric
   const [pricNombres, setPricNombres] = useState<string[]>([]);
   const [pricCategoriasByNombre, setPricCategoriasByNombre] = useState<Record<string, string[]>>({});
+  const [pricCountByNombre, setPricCountByNombre] = useState<Record<string, number>>({});
+  const [pricCountByCategoria, setPricCountByCategoria] = useState<Record<string, number>>({});
+  const [pricTotalPoligonos, setPricTotalPoligonos] = useState(0);
   const [selectedPricKeys, setSelectedPricKeys] = useState<string[]>([]);
   const [pricLimiteEnabled, setPricLimiteEnabled] = useState(false);
   const [allPlanReguladorData, setAllPlanReguladorData] = useState<(PlanReguladorData & { nombre?: string; categoria?: string })[]>([]);
