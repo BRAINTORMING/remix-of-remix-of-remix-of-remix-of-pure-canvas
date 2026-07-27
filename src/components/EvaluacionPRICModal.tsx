@@ -1004,6 +1004,11 @@ function ResultadoSection({ resultado, error, proyecto }: { resultado: Evaluacio
   const dictamenes = resultado.dictamenes_por_instrumento || [];
   const cupos = resultado.estacionamientos?.cupos_requeridos;
   const restriccionesAmb = resultado.restricciones_ambientales_universales || [];
+  const narrativaPorInstrumento = new Map(
+    (resultado.narrativas || [])
+      .filter(n => n && n.instrumento)
+      .map(n => [String(n.instrumento).trim().toLowerCase(), n.narrativa])
+  );
 
   return (
     <div className="space-y-3 pt-2 border-t border-border">
@@ -1021,6 +1026,7 @@ function ResultadoSection({ resultado, error, proyecto }: { resultado: Evaluacio
           const style = dictamenStyle(d.dictamen);
           const Icon = style.Icon;
           const esFueraDelAmbito = d.dictamen === 'fuera_del_ambito_de_aplicacion';
+          const narrativa = narrativaPorInstrumento.get(String(d.instrumento || '').trim().toLowerCase());
           return (
             <div key={idx} className="rounded-lg border border-border bg-card p-3 space-y-1.5">
               <div className="flex items-start justify-between gap-2">
@@ -1036,6 +1042,12 @@ function ResultadoSection({ resultado, error, proyecto }: { resultado: Evaluacio
               )}
               {!esFueraDelAmbito && d.zona_uso_suelo && (
                 <p className="text-[11px] text-muted-foreground">Zona: {d.zona_uso_suelo}</p>
+              )}
+              {narrativa && narrativa.trim().length > 0 && (
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary mb-1">Resumen ejecutivo</p>
+                  <p className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap">{narrativa}</p>
+                </div>
               )}
               <InstrumentoDetalle d={d} proyecto={proyecto} />
               {!esFueraDelAmbito && d.dictamen !== 'sin_zona_identificada_en_este_instrumento' && (
