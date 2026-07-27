@@ -527,11 +527,16 @@ export function SidebarFiltersProvider({
 
       setAllPlanReguladorData(mapped);
 
-      // Group categorias by nombre for the UI.
+      // Group categorias by nombre for the UI + count polygons per level.
       const byNombre: Record<string, Set<string>> = {};
+      const countNombre: Record<string, number> = {};
+      const countCategoria: Record<string, number> = {};
       mapped.forEach((m) => {
         if (!byNombre[m.nombre]) byNombre[m.nombre] = new Set();
         byNombre[m.nombre].add(m.categoria);
+        countNombre[m.nombre] = (countNombre[m.nombre] || 0) + 1;
+        const k = `${m.nombre}::${m.categoria}`;
+        countCategoria[k] = (countCategoria[k] || 0) + 1;
       });
       const nombres = Object.keys(byNombre).sort((a, b) => a.localeCompare(b));
       const byNombreArr: Record<string, string[]> = {};
@@ -540,6 +545,9 @@ export function SidebarFiltersProvider({
       });
       setPricNombres(nombres);
       setPricCategoriasByNombre(byNombreArr);
+      setPricCountByNombre(countNombre);
+      setPricCountByCategoria(countCategoria);
+      setPricTotalPoligonos(mapped.length);
     } catch (e) { console.error(e); }
   }
 
