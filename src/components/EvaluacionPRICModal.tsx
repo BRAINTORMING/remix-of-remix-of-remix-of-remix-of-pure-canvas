@@ -42,6 +42,11 @@ interface DictamenInstrumento {
   patrimonio_detectado?: Array<{ capa?: string; codigo_zona?: string }>;
 }
 
+interface NarrativaInstrumento {
+  instrumento: string;
+  narrativa: string;
+}
+
 interface EvaluacionResultado {
   resuelto?: boolean;
   motivo?: string;
@@ -49,6 +54,7 @@ interface EvaluacionResultado {
   comuna?: string;
   region?: string;
   dictamenes_por_instrumento?: DictamenInstrumento[];
+  narrativas?: NarrativaInstrumento[];
   estacionamientos?: { cupos_requeridos?: number; nota?: string } | null;
   restricciones_ambientales_universales?: Array<{ capa: string }>;
   dentro_limite_oficial_pric?: boolean;
@@ -394,7 +400,9 @@ export default function EvaluacionPRICModal({
       const sb = externalSupabase as unknown as {
         rpc: (fn: string, params: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
       };
-      const { data, error } = await sb.rpc('evaluar_proyecto_pric', {
+      const { data, error } = await sb.rpc('evaluar_proyecto_pric_narrativo', {
+        p_nombre_proyecto: nombreProyecto.trim(),
+        p_descripcion: descripcion.trim() || null,
         p_lon: parseFloat(longitud),
         p_lat: parseFloat(latitud),
         p_categoria_proyecto: categoria,
@@ -407,7 +415,7 @@ export default function EvaluacionPRICModal({
       });
 
       if (error) {
-        console.error('RPC evaluar_proyecto_pric error:', error);
+        console.error('RPC evaluar_proyecto_pric_narrativo error:', error);
         setResultadoError('Ocurrió un error al evaluar el proyecto, intenta nuevamente');
         return;
       }
@@ -996,6 +1004,11 @@ function ResultadoSection({ resultado, error, proyecto }: { resultado: Evaluacio
   const dictamenes = resultado.dictamenes_por_instrumento || [];
   const cupos = resultado.estacionamientos?.cupos_requeridos;
   const restriccionesAmb = resultado.restricciones_ambientales_universales || [];
+  const narrativaPorInstrumento = new Map(
+    (resultado.narrativas || [])
+      .filter(n => n && n.instrumento)
+      .map(n => [String(n.instrumento).trim().toLowerCase(), n.narrativa])
+  );
 
   return (
     <div className="space-y-3 pt-2 border-t border-border">
@@ -1013,6 +1026,7 @@ function ResultadoSection({ resultado, error, proyecto }: { resultado: Evaluacio
           const style = dictamenStyle(d.dictamen);
           const Icon = style.Icon;
           const esFueraDelAmbito = d.dictamen === 'fuera_del_ambito_de_aplicacion';
+          const narrativa = narrativaPorInstrumento.get(String(d.instrumento || '').trim().toLowerCase());
           return (
             <div key={idx} className="rounded-lg border border-border bg-card p-3 space-y-1.5">
               <div className="flex items-start justify-between gap-2">
@@ -1028,6 +1042,12 @@ function ResultadoSection({ resultado, error, proyecto }: { resultado: Evaluacio
               )}
               {!esFueraDelAmbito && d.zona_uso_suelo && (
                 <p className="text-[11px] text-muted-foreground">Zona: {d.zona_uso_suelo}</p>
+              )}
+              {narrativa && narrativa.trim().length > 0 && (
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary mb-1">Resumen ejecutivo</p>
+                  <p className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap">{narrativa}</p>
+                </div>
               )}
               <InstrumentoDetalle d={d} proyecto={proyecto} />
               {!esFueraDelAmbito && d.dictamen !== 'sin_zona_identificada_en_este_instrumento' && (
