@@ -1320,6 +1320,7 @@ export function PlanReguladorSection() {
                   const cats = ctx.pricCategoriasByNombre[nombre] || [];
                   const expanded = expandedNombres.includes(nombre);
                   const selCount = cats.filter(c => ctx.isPricCategoriaSelected(nombre, c)).length;
+                  const polCount = ctx.pricCountByNombre[nombre] || 0;
                   return (
                     <div
                       key={nombre}
