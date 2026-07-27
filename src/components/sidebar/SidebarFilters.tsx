@@ -1357,13 +1357,16 @@ export function PlanReguladorSection() {
                         >
                           {nombre}
                         </Label>
-                        <span className={cn(
-                          "text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full",
-                          selCount > 0
-                            ? "bg-amber-500 text-white"
-                            : "bg-amber-100 text-amber-700"
-                        )}>
-                          {selCount > 0 ? `${selCount}/${cats.length}` : cats.length}
+                        <span
+                          title={`${cats.length} categorías · ${polCount} polígonos`}
+                          className={cn(
+                            "text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full",
+                            selCount > 0
+                              ? "bg-amber-500 text-white"
+                              : "bg-amber-100 text-amber-700"
+                          )}
+                        >
+                          {selCount > 0 ? `${selCount}/${cats.length} · ${polCount}` : `${cats.length} · ${polCount}`}
                         </span>
                       </div>
                       {expanded && cats.length > 0 && (
