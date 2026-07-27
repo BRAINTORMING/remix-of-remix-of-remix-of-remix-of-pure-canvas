@@ -1394,6 +1394,12 @@ export function PlanReguladorSection() {
                                 >
                                   {cat}
                                 </Label>
+                                <span
+                                  title={`${ctx.pricCountByCategoria[`${nombre}::${cat}`] || 0} polígonos`}
+                                  className="text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0"
+                                >
+                                  {ctx.pricCountByCategoria[`${nombre}::${cat}`] || 0}
+                                </span>
                               </div>
                             );
                           })}
