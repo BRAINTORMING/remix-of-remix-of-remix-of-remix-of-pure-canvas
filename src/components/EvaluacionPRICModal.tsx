@@ -400,7 +400,9 @@ export default function EvaluacionPRICModal({
       const sb = externalSupabase as unknown as {
         rpc: (fn: string, params: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
       };
-      const { data, error } = await sb.rpc('evaluar_proyecto_pric', {
+      const { data, error } = await sb.rpc('evaluar_proyecto_pric_narrativo', {
+        p_nombre_proyecto: nombreProyecto.trim(),
+        p_descripcion: descripcion.trim() || null,
         p_lon: parseFloat(longitud),
         p_lat: parseFloat(latitud),
         p_categoria_proyecto: categoria,
@@ -413,7 +415,7 @@ export default function EvaluacionPRICModal({
       });
 
       if (error) {
-        console.error('RPC evaluar_proyecto_pric error:', error);
+        console.error('RPC evaluar_proyecto_pric_narrativo error:', error);
         setResultadoError('Ocurrió un error al evaluar el proyecto, intenta nuevamente');
         return;
       }
