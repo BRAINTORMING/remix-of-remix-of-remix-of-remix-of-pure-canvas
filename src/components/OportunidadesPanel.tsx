@@ -97,7 +97,9 @@ interface Candidato {
   indice_friccion?: number;
   percentil_texto?: string;
   detectamos?: Detectamos;
+  capas_detectadas?: CapasDetectadas;
   narrativa?: Narrativa;
+
 }
 
 
