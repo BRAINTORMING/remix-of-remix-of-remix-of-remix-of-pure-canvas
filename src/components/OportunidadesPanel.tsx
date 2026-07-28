@@ -158,7 +158,12 @@ interface ConsultarViabilidadResponse {
     mensaje?: string;
     mejor_alternativa_etiqueta?: string;
   } | null;
+  indice_friccion?: number;
+  percentil_texto?: string;
+  detectamos?: Detectamos;
+  capas_detectadas?: CapasDetectadas;
   dictamen?: DictamenResp;
+
   costo_contexto_detalle?: Array<{ etiqueta: string; valor: number }>;
   precedentes?: Precedente[];
   contexto_enriquecido?: ContextoEnriquecido;
