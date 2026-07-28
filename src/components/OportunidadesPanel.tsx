@@ -358,34 +358,42 @@ function NarrativaBlock({
       )}
 
       {detectamos && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-start gap-1.5">
           {!!detectamos.proyectos_cercanos_total && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-              🏗️ {detectamos.proyectos_cercanos_total} proyectos cerca
-            </span>
+            <DetectamosBadge
+              label={`🏗️ ${detectamos.proyectos_cercanos_total} proyectos cerca`}
+              nombres={capasDetectadas?.proyectos}
+            />
           )}
           {!!detectamos.proyectos_rechazados_similares && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 text-red-700 border border-red-500/20 text-[10px] px-1.5 py-0.5">
-              ❌ {detectamos.proyectos_rechazados_similares} rechazados
-            </span>
+            <DetectamosBadge
+              label={`❌ ${detectamos.proyectos_rechazados_similares} rechazados`}
+              className="bg-red-500/10 text-red-700 border border-red-500/20"
+              nombres={capasDetectadas?.proyectos_rechazados}
+            />
           )}
           {!!detectamos.proyectos_mismo_rubro && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-              🏭 {detectamos.proyectos_mismo_rubro} del mismo rubro
-            </span>
+            <DetectamosBadge
+              label={`🏭 ${detectamos.proyectos_mismo_rubro} del mismo rubro`}
+              nombres={capasDetectadas?.proyectos_mismo_rubro}
+            />
           )}
           {!!detectamos.humedales_cercanos && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[10px] px-1.5 py-0.5">
-              💧 {detectamos.humedales_cercanos} humedales cerca
-            </span>
+            <DetectamosBadge
+              label={`💧 ${detectamos.humedales_cercanos} humedales cerca`}
+              className="bg-sky-500/10 text-sky-700 border border-sky-500/20"
+              nombres={capasDetectadas?.humedales}
+            />
           )}
           {!!detectamos.activos_cercanos && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-              📍 {detectamos.activos_cercanos} activo{detectamos.activos_cercanos === 1 ? '' : 's'} cerca
-            </span>
+            <DetectamosBadge
+              label={`📍 ${detectamos.activos_cercanos} activo${detectamos.activos_cercanos === 1 ? '' : 's'} cerca`}
+              nombres={capasDetectadas?.activos}
+            />
           )}
         </div>
       )}
+
 
       {narrativa?.sugerencias && narrativa.sugerencias.length > 0 && (
         <ul className="space-y-0.5 pt-0.5">
