@@ -1162,7 +1162,16 @@ export default function OportunidadesPanel({
             {/* Modo B */}
             {(response.narrativa || response.respuesta_narrativa || response.contexto_enriquecido || (response.citas_normativa && response.citas_normativa.length > 0)) && (
               <div className="space-y-2.5">
-                {response.narrativa && <NarrativaBlock narrativa={response.narrativa} />}
+                {response.narrativa && (
+                  <NarrativaBlock
+                    narrativa={response.narrativa}
+                    indiceFriccion={response.indice_friccion}
+                    percentilTexto={response.percentil_texto}
+                    detectamos={response.detectamos}
+                    capasDetectadas={response.capas_detectadas}
+                  />
+                )}
+
 
                 {!response.narrativa && response.respuesta_narrativa && (
                   <div className="prose prose-sm max-w-none text-foreground">
