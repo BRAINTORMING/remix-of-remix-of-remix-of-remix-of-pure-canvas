@@ -258,19 +258,58 @@ function cuerpoRecomendacion(txt?: string): string {
   return parts[0] ?? '';
 }
 
+function DetectamosBadge({
+  label,
+  className,
+  nombres,
+}: {
+  label: string;
+  className?: string;
+  nombres?: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const items = (nombres ?? []).filter(Boolean);
+  return (
+    <span className="inline-flex flex-col">
+      <button
+        type="button"
+        onClick={() => items.length > 0 && setOpen((v) => !v)}
+        title={items.length > 0 ? items.join(' · ') : undefined}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground',
+          items.length > 0 && 'cursor-pointer hover:opacity-80',
+          className
+        )}
+      >
+        {label}
+      </button>
+      {open && items.length > 0 && (
+        <ul className="mt-1 space-y-0.5 pl-1">
+          {items.map((n, i) => (
+            <li key={i} className="text-[9px] leading-snug text-muted-foreground">• {n}</li>
+          ))}
+        </ul>
+      )}
+    </span>
+  );
+}
+
 function NarrativaBlock({
   narrativa,
   indiceFriccion,
   percentilTexto,
   detectamos,
+  capasDetectadas,
   compact,
 }: {
   narrativa?: Narrativa;
   indiceFriccion?: number;
   percentilTexto?: string;
   detectamos?: Detectamos;
+  capasDetectadas?: CapasDetectadas;
   compact?: boolean;
 }) {
+
   if (!narrativa && indiceFriccion == null && !detectamos) return null;
   const cuerpo = cuerpoRecomendacion(narrativa?.recomendacion_ejecutiva);
   const idx = typeof indiceFriccion === 'number' ? Math.max(0, Math.min(100, indiceFriccion)) : null;
