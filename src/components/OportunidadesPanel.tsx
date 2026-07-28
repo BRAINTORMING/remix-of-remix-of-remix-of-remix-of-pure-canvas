@@ -66,6 +66,15 @@ interface Detectamos {
   activos_cercanos?: number;
 }
 
+interface CapasDetectadas {
+  proyectos_rechazados?: string[];
+  humedales?: string[];
+  activos?: string[];
+  proyectos?: string[];
+  proyectos_mismo_rubro?: string[];
+}
+
+
 interface Candidato {
   id?: string;
   nombre?: string;
