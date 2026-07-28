@@ -1071,6 +1071,8 @@ export default function OportunidadesPanel({
                       indiceFriccion={c.indice_friccion}
                       percentilTexto={c.percentil_texto}
                       detectamos={c.detectamos}
+                      capasDetectadas={c.capas_detectadas}
+
                     />
 
                     {!c.detectamos && (
