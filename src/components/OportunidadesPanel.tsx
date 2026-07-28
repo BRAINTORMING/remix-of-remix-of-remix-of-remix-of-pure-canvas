@@ -66,6 +66,15 @@ interface Detectamos {
   activos_cercanos?: number;
 }
 
+interface CapasDetectadas {
+  proyectos_rechazados?: string[];
+  humedales?: string[];
+  activos?: string[];
+  proyectos?: string[];
+  proyectos_mismo_rubro?: string[];
+}
+
+
 interface Candidato {
   id?: string;
   nombre?: string;
@@ -88,7 +97,9 @@ interface Candidato {
   indice_friccion?: number;
   percentil_texto?: string;
   detectamos?: Detectamos;
+  capas_detectadas?: CapasDetectadas;
   narrativa?: Narrativa;
+
 }
 
 
@@ -147,7 +158,12 @@ interface ConsultarViabilidadResponse {
     mensaje?: string;
     mejor_alternativa_etiqueta?: string;
   } | null;
+  indice_friccion?: number;
+  percentil_texto?: string;
+  detectamos?: Detectamos;
+  capas_detectadas?: CapasDetectadas;
   dictamen?: DictamenResp;
+
   costo_contexto_detalle?: Array<{ etiqueta: string; valor: number }>;
   precedentes?: Precedente[];
   contexto_enriquecido?: ContextoEnriquecido;
@@ -247,19 +263,58 @@ function cuerpoRecomendacion(txt?: string): string {
   return parts[0] ?? '';
 }
 
+function DetectamosBadge({
+  label,
+  className,
+  nombres,
+}: {
+  label: string;
+  className?: string;
+  nombres?: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const items = (nombres ?? []).filter(Boolean);
+  return (
+    <span className="inline-flex flex-col">
+      <button
+        type="button"
+        onClick={() => items.length > 0 && setOpen((v) => !v)}
+        title={items.length > 0 ? items.join(' · ') : undefined}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground',
+          items.length > 0 && 'cursor-pointer hover:opacity-80',
+          className
+        )}
+      >
+        {label}
+      </button>
+      {open && items.length > 0 && (
+        <ul className="mt-1 space-y-0.5 pl-1">
+          {items.map((n, i) => (
+            <li key={i} className="text-[9px] leading-snug text-muted-foreground">• {n}</li>
+          ))}
+        </ul>
+      )}
+    </span>
+  );
+}
+
 function NarrativaBlock({
   narrativa,
   indiceFriccion,
   percentilTexto,
   detectamos,
+  capasDetectadas,
   compact,
 }: {
   narrativa?: Narrativa;
   indiceFriccion?: number;
   percentilTexto?: string;
   detectamos?: Detectamos;
+  capasDetectadas?: CapasDetectadas;
   compact?: boolean;
 }) {
+
   if (!narrativa && indiceFriccion == null && !detectamos) return null;
   const cuerpo = cuerpoRecomendacion(narrativa?.recomendacion_ejecutiva);
   const idx = typeof indiceFriccion === 'number' ? Math.max(0, Math.min(100, indiceFriccion)) : null;
@@ -308,34 +363,42 @@ function NarrativaBlock({
       )}
 
       {detectamos && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-start gap-1.5">
           {!!detectamos.proyectos_cercanos_total && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-              🏗️ {detectamos.proyectos_cercanos_total} proyectos cerca
-            </span>
+            <DetectamosBadge
+              label={`🏗️ ${detectamos.proyectos_cercanos_total} proyectos cerca`}
+              nombres={capasDetectadas?.proyectos}
+            />
           )}
           {!!detectamos.proyectos_rechazados_similares && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 text-red-700 border border-red-500/20 text-[10px] px-1.5 py-0.5">
-              ❌ {detectamos.proyectos_rechazados_similares} rechazados
-            </span>
+            <DetectamosBadge
+              label={`❌ ${detectamos.proyectos_rechazados_similares} rechazados`}
+              className="bg-red-500/10 text-red-700 border border-red-500/20"
+              nombres={capasDetectadas?.proyectos_rechazados}
+            />
           )}
           {!!detectamos.proyectos_mismo_rubro && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-              🏭 {detectamos.proyectos_mismo_rubro} del mismo rubro
-            </span>
+            <DetectamosBadge
+              label={`🏭 ${detectamos.proyectos_mismo_rubro} del mismo rubro`}
+              nombres={capasDetectadas?.proyectos_mismo_rubro}
+            />
           )}
           {!!detectamos.humedales_cercanos && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[10px] px-1.5 py-0.5">
-              💧 {detectamos.humedales_cercanos} humedales cerca
-            </span>
+            <DetectamosBadge
+              label={`💧 ${detectamos.humedales_cercanos} humedales cerca`}
+              className="bg-sky-500/10 text-sky-700 border border-sky-500/20"
+              nombres={capasDetectadas?.humedales}
+            />
           )}
           {!!detectamos.activos_cercanos && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-[10px] px-1.5 py-0.5 text-foreground">
-              📍 {detectamos.activos_cercanos} activo{detectamos.activos_cercanos === 1 ? '' : 's'} cerca
-            </span>
+            <DetectamosBadge
+              label={`📍 ${detectamos.activos_cercanos} activo${detectamos.activos_cercanos === 1 ? '' : 's'} cerca`}
+              nombres={capasDetectadas?.activos}
+            />
           )}
         </div>
       )}
+
 
       {narrativa?.sugerencias && narrativa.sugerencias.length > 0 && (
         <ul className="space-y-0.5 pt-0.5">
@@ -1013,6 +1076,8 @@ export default function OportunidadesPanel({
                       indiceFriccion={c.indice_friccion}
                       percentilTexto={c.percentil_texto}
                       detectamos={c.detectamos}
+                      capasDetectadas={c.capas_detectadas}
+
                     />
 
                     {!c.detectamos && (
@@ -1097,7 +1162,16 @@ export default function OportunidadesPanel({
             {/* Modo B */}
             {(response.narrativa || response.respuesta_narrativa || response.contexto_enriquecido || (response.citas_normativa && response.citas_normativa.length > 0)) && (
               <div className="space-y-2.5">
-                {response.narrativa && <NarrativaBlock narrativa={response.narrativa} />}
+                {response.narrativa && (
+                  <NarrativaBlock
+                    narrativa={response.narrativa}
+                    indiceFriccion={response.indice_friccion}
+                    percentilTexto={response.percentil_texto}
+                    detectamos={response.detectamos}
+                    capasDetectadas={response.capas_detectadas}
+                  />
+                )}
+
 
                 {!response.narrativa && response.respuesta_narrativa && (
                   <div className="prose prose-sm max-w-none text-foreground">
