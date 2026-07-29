@@ -841,6 +841,24 @@ export default function OportunidadesPanel({
 
         {modo && (
           <>
+            {/* Intro contextual por modo — se oculta cuando ya hay resultados para dar espacio */}
+            {!response && (
+              <div
+                className="rounded-xl border px-3.5 py-3"
+                style={{
+                  backgroundColor: `${modoInfo[modo].color}14`,
+                  borderColor: `${modoInfo[modo].color}33`,
+                }}
+              >
+                <h3 className="text-[13px] font-semibold text-foreground leading-snug mb-1">
+                  {modoIntro[modo].titulo}
+                </h3>
+                <p className="text-[11px] text-foreground/80 leading-relaxed">
+                  {modoIntro[modo].cuerpo}
+                </p>
+              </div>
+            )}
+
             {/* Selector de punto en mapa */}
             <div
               className={cn(
