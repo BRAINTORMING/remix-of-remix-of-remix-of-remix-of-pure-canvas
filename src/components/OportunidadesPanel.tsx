@@ -199,6 +199,24 @@ const modoInfo: Record<
   },
 };
 
+const modoIntro: Record<OportunidadModo, { titulo: string; cuerpo: string }> = {
+  exploracion: {
+    titulo: 'Descubre qué tan favorable es una zona antes de decidir',
+    cuerpo:
+      'Con esta consulta vas a obtener un ranking de las zonas cercanas al punto que elijas, ordenadas de mejor a peor oportunidad. Para cada una vas a ver un semáforo fácil de leer, la razón principal detrás de esa evaluación, y si existe una alternativa mejor a pocos kilómetros. Es una vista rápida para orientarte — no reemplaza una evaluación formal, pero te dice por dónde empezar.',
+  },
+  punto_fijo: {
+    titulo: 'Obtén un veredicto claro sobre tu proyecto, en ese punto exacto',
+    cuerpo:
+      'Completa los datos de tu proyecto y vas a recibir un análisis con el mismo nivel de detalle que una evaluación formal: si es viable en esa ubicación, qué restricciones o antecedentes existen cerca (incluyendo proyectos similares aprobados o rechazados), qué normativa aplica, y qué deberías hacer a continuación. Es tu punto de partida antes de avanzar con una evaluación oficial.',
+  },
+  camino_minimo: {
+    titulo: 'Encuentra el mejor punto cercano para invertir',
+    cuerpo:
+      'Indica un punto de referencia y qué tan importante es para ti la cercanía versus el menor costo regulatorio. Vas a obtener una lista ordenada de zonas cercanas, priorizadas según ese criterio, para comparar alternativas antes de decidir exactamente dónde ubicar tu proyecto.',
+  },
+};
+
 function colorByCosto(c: number, min: number, max: number): string {
   if (max === min) return 'bg-emerald-500';
   const t = (c - min) / (max - min);
@@ -823,6 +841,24 @@ export default function OportunidadesPanel({
 
         {modo && (
           <>
+            {/* Intro contextual por modo — se oculta cuando ya hay resultados para dar espacio */}
+            {!response && (
+              <div
+                className="rounded-xl border px-3.5 py-3"
+                style={{
+                  backgroundColor: `${modoInfo[modo].color}14`,
+                  borderColor: `${modoInfo[modo].color}33`,
+                }}
+              >
+                <h3 className="text-[13px] font-semibold text-foreground leading-snug mb-1">
+                  {modoIntro[modo].titulo}
+                </h3>
+                <p className="text-[11px] text-foreground/80 leading-relaxed">
+                  {modoIntro[modo].cuerpo}
+                </p>
+              </div>
+            )}
+
             {/* Selector de punto en mapa */}
             <div
               className={cn(
