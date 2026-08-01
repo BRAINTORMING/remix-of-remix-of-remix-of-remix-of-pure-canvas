@@ -981,7 +981,7 @@ export function RegionesYComunasFixed() {
             <>
               <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
               <div
-                className="absolute left-0 right-0 mt-1 z-[9999] bg-popover border border-border rounded-[13px] shadow-lg max-h-[280px] overflow-y-auto p-1"
+                className="absolute left-0 right-0 mt-1 z-[9999] bg-popover border border-border rounded-[13px] shadow-none max-h-[280px] overflow-y-auto p-1"
               >
                 <button
   type="button"

@@ -2848,7 +2848,7 @@ export default function MapView({
       />
 
       {/* Map style selector next to the SearchBar */}
-      <MapStyleSelector sidebarCollapsed={sidebarCollapsed} sidebarWidth={360} isMobile={isMobile} />
+      <MapStyleSelector sidebarCollapsed={sidebarCollapsed} sidebarWidth={0} isMobile={isMobile} />
 
 
       {/* Coordinates Display */}
