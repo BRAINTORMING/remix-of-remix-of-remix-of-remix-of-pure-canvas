@@ -241,3 +241,8 @@ svg text, svg tspan,
   ::-webkit-scrollbar-thumb { background: hsl(0 0% 85%); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 70%); }
 }
+
+@keyframes logo-spin-y {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
