@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Layers as LayersIcon, Check, Sun, Droplet, Brick } from "lucide-react";
+import { Layers as LayersIcon, Check, Sun, Droplet, BrickWall as Brick } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MapStyleOption {
