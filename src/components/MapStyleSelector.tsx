@@ -41,7 +41,7 @@ interface Props {
   isMobile?: boolean;
 }
 
-export default function MapStyleSelector({ sidebarCollapsed = false, sidebarWidth = 360, isMobile = false }: Props) {
+export default function MapStyleSelector({ sidebarCollapsed = false, sidebarWidth = 0, isMobile = false }: Props) {
   const [current, setCurrent] = useState<MapStyleOption>(() => getStoredMapStyle());
 
   useEffect(() => {
