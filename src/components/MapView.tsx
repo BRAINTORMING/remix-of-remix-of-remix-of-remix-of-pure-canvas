@@ -156,6 +156,10 @@ export default function MapView({
   // medioambiente rendering are filtered to only the zones involved.
   const [pricEvalZones, setPricEvalZones] = useState<string[] | null>(null);
 
+  // Bumped after a basemap style swap so every layer effect re-applies
+  // the current filters onto the fresh style (no filters are lost).
+  const [styleEpoch, setStyleEpoch] = useState(0);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail || {};
@@ -308,7 +312,7 @@ export default function MapView({
       const safe = key.replace(/[^a-zA-Z0-9]/g, '-');
       apply(`planregulador-${safe}-fill`, `planregulador-${safe}-outline`, `planregulador-${safe}-glow`);
     });
-  }, [radialActive, radialState.radiusKm, radialState.center, filters.poligonos, filters.planRegulador]);
+  }, [radialActive, radialState.radiusKm, radialState.center, filters.poligonos, filters.planRegulador, styleEpoch]);
 
   // Haversine distance in km
   const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -797,7 +801,7 @@ export default function MapView({
     };
     
     loadComunas();
-  }, [filters.comunas]);
+  }, [filters.comunas, styleEpoch]);
 
   // Handle poligonos (medioambiente) filter changes - with comuna filtering
   useEffect(() => {
@@ -868,7 +872,7 @@ export default function MapView({
     };
     
     loadAndZoomPoligonos();
-  }, [filters.poligonos, filters.comunas, isPolygonInSelectedComunas, matchesPricEvalZone]);
+  }, [filters.poligonos, filters.comunas, isPolygonInSelectedComunas, matchesPricEvalZone, styleEpoch]);
 
   // Load Plan Regulador GeoJSON and add to map
   const loadPlanReguladorGeoJSON = (planRegulador: PlanReguladorData, keyOverride?: string): [number, number][] => {
@@ -1151,7 +1155,7 @@ export default function MapView({
       cancelled = true;
       m.off('idle', applyPric);
     };
-  }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone, setSourceCoords, triggerFitBounds]);
+  }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone, setSourceCoords, triggerFitBounds, styleEpoch]);
 
 
 
@@ -1510,7 +1514,7 @@ export default function MapView({
       essential: true
     });
 
-  }, [pricQueryPoint]);
+  }, [pricQueryPoint, styleEpoch]);
 
   // Radial analysis: listen to sidebar events and render a dashed circle
   useEffect(() => {
@@ -1836,7 +1840,7 @@ export default function MapView({
     };
     map.current.on('style.load', onStyleLoad);
     return () => { map.current?.off('style.load', onStyleLoad); };
-  }, [addPricLimiteLayer]);
+  }, [addPricLimiteLayer, styleEpoch]);
 
 
   // Function to zoom to specific coordinates
@@ -2287,12 +2291,19 @@ export default function MapView({
     const onStyleChange = (e: Event) => {
       const style = (e as CustomEvent).detail as { url: string; auto?: boolean } | undefined;
       if (!map.current || !style?.url) return;
+      // Custom sources/layers are wiped by setStyle — forget what was drawn
+      // so the layer effects re-add everything on the new style.
+      loadedComunasRef.current.clear();
+      loadedPoligonosRef.current.clear();
+      loadedPlanReguladorRef.current.clear();
       map.current.setStyle(style.url);
       map.current.once('style.load', () => {
         if (!map.current) return;
         if (style.auto) {
           try { map.current.setConfigProperty('basemap', 'lightPreset', getLightPreset()); } catch {}
         }
+        // Re-apply all active filters/layers onto the fresh style.
+        setStyleEpoch(v => v + 1);
       });
     };
     window.addEventListener('gdudex:mapStyleChange', onStyleChange as EventListener);
@@ -2509,7 +2520,7 @@ export default function MapView({
       setSourceCoords('activos', []);
       setResultCounts(prev => ({ ...prev, activos: 0 }));
     }
-  }, [activos, filters, isPointInSelectedComunas, hasSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius]);
+  }, [activos, filters, isPointInSelectedComunas, hasSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius, styleEpoch]);
 
   // Add proyecto markers with comuna filtering
   useEffect(() => {
@@ -2685,7 +2696,7 @@ export default function MapView({
       setResultCounts(prev => ({ ...prev, proyectos: 0 }));
     }
     prevProyectosRef.current = validProyectos;
-  }, [proyectosFiltrados, allProyectos, filters.comunas, isPointInSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius]);
+  }, [proyectosFiltrados, allProyectos, filters.comunas, isPointInSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius, styleEpoch]);
 
   const { regionesPermitidas } = useAuth();
 
@@ -2837,7 +2848,7 @@ export default function MapView({
       />
 
       {/* Map style selector next to the SearchBar */}
-      <MapStyleSelector sidebarCollapsed={sidebarCollapsed} sidebarWidth={360} isMobile={isMobile} />
+      <MapStyleSelector sidebarCollapsed={sidebarCollapsed} sidebarWidth={0} isMobile={isMobile} />
 
 
       {/* Coordinates Display */}
