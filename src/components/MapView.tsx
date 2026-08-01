@@ -156,6 +156,10 @@ export default function MapView({
   // medioambiente rendering are filtered to only the zones involved.
   const [pricEvalZones, setPricEvalZones] = useState<string[] | null>(null);
 
+  // Bumped after a basemap style swap so every layer effect re-applies
+  // the current filters onto the fresh style (no filters are lost).
+  const [styleEpoch, setStyleEpoch] = useState(0);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail || {};
