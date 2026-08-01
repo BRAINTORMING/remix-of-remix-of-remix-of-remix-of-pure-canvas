@@ -312,7 +312,7 @@ export default function MapView({
       const safe = key.replace(/[^a-zA-Z0-9]/g, '-');
       apply(`planregulador-${safe}-fill`, `planregulador-${safe}-outline`, `planregulador-${safe}-glow`);
     });
-  }, [radialActive, radialState.radiusKm, radialState.center, filters.poligonos, filters.planRegulador]);
+  }, [radialActive, radialState.radiusKm, radialState.center, filters.poligonos, filters.planRegulador, styleEpoch]);
 
   // Haversine distance in km
   const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -801,7 +801,7 @@ export default function MapView({
     };
     
     loadComunas();
-  }, [filters.comunas]);
+  }, [filters.comunas, styleEpoch]);
 
   // Handle poligonos (medioambiente) filter changes - with comuna filtering
   useEffect(() => {
@@ -872,7 +872,7 @@ export default function MapView({
     };
     
     loadAndZoomPoligonos();
-  }, [filters.poligonos, filters.comunas, isPolygonInSelectedComunas, matchesPricEvalZone]);
+  }, [filters.poligonos, filters.comunas, isPolygonInSelectedComunas, matchesPricEvalZone, styleEpoch]);
 
   // Load Plan Regulador GeoJSON and add to map
   const loadPlanReguladorGeoJSON = (planRegulador: PlanReguladorData, keyOverride?: string): [number, number][] => {
@@ -1155,7 +1155,7 @@ export default function MapView({
       cancelled = true;
       m.off('idle', applyPric);
     };
-  }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone, setSourceCoords, triggerFitBounds]);
+  }, [filters.planRegulador, filters.comunas, isPolygonInSelectedComunas, allPlanRegulador, pricEvalZones, matchesPricEvalZone, setSourceCoords, triggerFitBounds, styleEpoch]);
 
 
 
@@ -1514,7 +1514,7 @@ export default function MapView({
       essential: true
     });
 
-  }, [pricQueryPoint]);
+  }, [pricQueryPoint, styleEpoch]);
 
   // Radial analysis: listen to sidebar events and render a dashed circle
   useEffect(() => {
@@ -1840,7 +1840,7 @@ export default function MapView({
     };
     map.current.on('style.load', onStyleLoad);
     return () => { map.current?.off('style.load', onStyleLoad); };
-  }, [addPricLimiteLayer]);
+  }, [addPricLimiteLayer, styleEpoch]);
 
 
   // Function to zoom to specific coordinates
@@ -2520,7 +2520,7 @@ export default function MapView({
       setSourceCoords('activos', []);
       setResultCounts(prev => ({ ...prev, activos: 0 }));
     }
-  }, [activos, filters, isPointInSelectedComunas, hasSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius]);
+  }, [activos, filters, isPointInSelectedComunas, hasSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius, styleEpoch]);
 
   // Add proyecto markers with comuna filtering
   useEffect(() => {
@@ -2696,7 +2696,7 @@ export default function MapView({
       setResultCounts(prev => ({ ...prev, proyectos: 0 }));
     }
     prevProyectosRef.current = validProyectos;
-  }, [proyectosFiltrados, allProyectos, filters.comunas, isPointInSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius]);
+  }, [proyectosFiltrados, allProyectos, filters.comunas, isPointInSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius, styleEpoch]);
 
   const { regionesPermitidas } = useAuth();
 
