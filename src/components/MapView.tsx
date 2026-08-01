@@ -2291,12 +2291,19 @@ export default function MapView({
     const onStyleChange = (e: Event) => {
       const style = (e as CustomEvent).detail as { url: string; auto?: boolean } | undefined;
       if (!map.current || !style?.url) return;
+      // Custom sources/layers are wiped by setStyle — forget what was drawn
+      // so the layer effects re-add everything on the new style.
+      loadedComunasRef.current.clear();
+      loadedPoligonosRef.current.clear();
+      loadedPlanReguladorRef.current.clear();
       map.current.setStyle(style.url);
       map.current.once('style.load', () => {
         if (!map.current) return;
         if (style.auto) {
           try { map.current.setConfigProperty('basemap', 'lightPreset', getLightPreset()); } catch {}
         }
+        // Re-apply all active filters/layers onto the fresh style.
+        setStyleEpoch(v => v + 1);
       });
     };
     window.addEventListener('gdudex:mapStyleChange', onStyleChange as EventListener);
