@@ -144,11 +144,16 @@ export default function MapStyleSelector({ sidebarCollapsed = false, sidebarWidt
               target="_blank"
               rel="noopener noreferrer"
               title={label}
-              className="h-14 rounded-2xl px-4 flex items-center gap-2 text-white transition-opacity hover:opacity-90"
+              aria-label={label}
+              className="group h-14 rounded-2xl px-[18px] flex items-center text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: bg }}
             >
               <Icon className="h-5 w-5 shrink-0" style={{ color: "#FFFFFF" }} />
-              <span className="text-[13px] font-medium whitespace-nowrap">{label}</span>
+              <span className="grid grid-cols-[0fr] group-hover:grid-cols-[1fr] transition-[grid-template-columns] duration-300 ease-out">
+                <span className="overflow-hidden">
+                  <span className="block text-[13px] font-medium whitespace-nowrap pl-2">{label}</span>
+                </span>
+              </span>
             </a>
           ))}
         </div>
