@@ -83,7 +83,10 @@ export default function MapStyleSelector({ sidebarCollapsed = false, sidebarWidt
         <div
           className={cn(
             "flex items-center gap-2",
-            isMobile ? "" : "absolute left-[calc(100%+8px)] top-0 pointer-events-auto"
+            isMobile
+              ? "flex-wrap justify-end max-w-[calc(100vw-1.5rem)]"
+              : "absolute left-[calc(100%+8px)] top-0 pointer-events-auto"
+
           )}
         >
       <DropdownMenu>
