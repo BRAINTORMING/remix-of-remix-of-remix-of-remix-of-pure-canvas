@@ -58,33 +58,45 @@ export default function MapStyleSelector({ sidebarCollapsed = false, sidebarWidt
     window.dispatchEvent(new CustomEvent("gdudex:mapStyleChange", { detail: style }));
   };
 
-  // Position: flush to the right edge of the SearchBar (520px wide, centered).
-  // Search bar half-width = 260, plus 8px gap. Square 56×56 matches search bar height.
+  // Align exactly with the SearchBar (520px wide, same centering math),
+  // then place the buttons right next to its right edge.
   const desktopStyle: React.CSSProperties = {
     top: 16,
     left: sidebarCollapsed
-      ? "calc(50% + 268px)"
-      : `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 2 + 268px)`,
+      ? "50%"
+      : `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 2)`,
+    transform: "translateX(-50%)",
   };
+
+  const shortcuts = [
+    { label: "Solar", href: "https://hile-simulador.lovable.app/", bg: "#F5C045", Icon: Sun },
+    { label: "Agua", href: "https://hile-simulador.lovable.app/agua", bg: "#3FADF8", Icon: Droplet },
+    { label: "Bloques de cemento", href: "https://hile-simulador.lovable.app/bloques", bg: "#D1613E", Icon: Brick },
+  ];
 
   return (
     <div
-      className={cn(
-        "fixed z-[901] font-graphik",
-        isMobile ? "top-3 right-3" : ""
-      )}
+      className={cn("fixed z-[901] font-graphik", isMobile ? "top-3 right-3" : "")}
       style={!isMobile ? desktopStyle : undefined}
     >
+      <div className={cn("relative", isMobile ? "" : "w-[520px] pointer-events-none")}>
+        <div
+          className={cn(
+            "flex items-center gap-2",
+            isMobile ? "" : "absolute left-[calc(100%+8px)] top-0 pointer-events-auto"
+          )}
+        >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             title="Cambiar tipo de mapa"
             aria-label="Cambiar tipo de mapa"
-            className="h-14 w-14 rounded-2xl bg-card border border-border flex items-center justify-center transition-colors hover:bg-[#EFF6FF]"
+            className="h-14 w-14 rounded-2xl bg-card border-0 flex items-center justify-center transition-colors hover:bg-[#EFF6FF]"
           >
             <LayersIcon className="h-5 w-5 text-foreground" />
           </button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent
           align="end"
           className="w-[260px] rounded-2xl border border-border p-1.5 z-[9999]"
