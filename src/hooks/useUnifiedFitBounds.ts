@@ -10,8 +10,6 @@ interface FitBoundsOptions {
   maxZoom?: number;
   /** Animation duration */
   duration?: number;
-  /** Called when there are no coordinates left to fit (all filters cleared) */
-  onEmpty?: () => void;
 }
 
 /**
@@ -27,16 +25,11 @@ export function useUnifiedFitBounds(
     padding = 80,
     maxZoom = 14,
     duration = 1800,
-    onEmpty,
   } = options;
-
-  const onEmptyRef = useRef(onEmpty);
-  onEmptyRef.current = onEmpty;
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coordsRef = useRef<Map<string, [number, number][]>>(new Map());
   const triggerRef = useRef(0);
-  const hadCoordsRef = useRef(false);
 
   /**
    * Register coordinates for a source (e.g., 'comunas', 'poligonos', 'activos', 'proyectos')
@@ -61,8 +54,6 @@ export function useUnifiedFitBounds(
     maxZoom?: number;
     duration?: number;
     debounceMs?: number;
-    /** Skip the empty-fallback (do not zoom out when nothing is registered) */
-    skipEmptyFallback?: boolean;
   }) => {
     if (timerRef.current) clearTimeout(timerRef.current);
 
@@ -72,7 +63,7 @@ export function useUnifiedFitBounds(
       if (!map.current) return;
 
       // Collect coordinates (optionally restricted to specific sources)
-      let allCoords: [number, number][] = [];
+      const allCoords: [number, number][] = [];
       let usedSources = 0;
       coordsRef.current.forEach((coords, source) => {
         if (opts?.only && !opts.only.includes(source)) return;
@@ -80,30 +71,7 @@ export function useUnifiedFitBounds(
         allCoords.push(...coords);
       });
 
-      // If the restricted subset is empty, fall back to everything registered
-      if (allCoords.length === 0 && opts?.only) {
-        allCoords = [];
-        usedSources = 0;
-        coordsRef.current.forEach((coords) => {
-          usedSources++;
-          allCoords.push(...coords);
-        });
-      }
-
-      if (allCoords.length === 0) {
-        // Nothing left on the map: zoom back out instead of silently doing nothing.
-        if (!opts?.skipEmptyFallback && hadCoordsRef.current) {
-          hadCoordsRef.current = false;
-          try { map.current.stop(); } catch { /* noop */ }
-          onEmptyRef.current?.();
-        }
-        return;
-      }
-
-      hadCoordsRef.current = true;
-
-      // Cancel any in-flight camera animation so rapid toggles never get stuck.
-      try { map.current.stop(); } catch { /* noop */ }
+      if (allCoords.length === 0) return;
 
       const effPadding = opts?.padding ?? padding;
       const effMaxZoom = opts?.maxZoom ?? maxZoom;
@@ -147,7 +115,6 @@ export function useUnifiedFitBounds(
    */
   const clearAll = useCallback(() => {
     coordsRef.current.clear();
-    hadCoordsRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
