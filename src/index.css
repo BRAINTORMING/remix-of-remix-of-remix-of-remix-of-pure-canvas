@@ -246,3 +246,10 @@ svg text, svg tspan,
   from { transform: rotateY(0deg); }
   to { transform: rotateY(360deg); }
 }
+
+/* Pulso del marcador de la mejor alternativa (Oportunidades) */
+@keyframes oportunidad-pulse {
+  0% { transform: scale(0.8); opacity: 0.9; }
+  70% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
