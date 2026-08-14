@@ -133,10 +133,17 @@ export default function MapView({
   
   // Unified fitBounds system
   const { setSourceCoords, triggerFitBounds, clearAll: clearAllBounds } = useUnifiedFitBounds(map, {
-    debounceMs: 200,
+    debounceMs: 120,
     padding: 80,
     maxZoom: 14,
-    duration: 1800,
+    duration: 900,
+    // Cuando ya no queda nada seleccionado, el mapa vuelve solo a la vista
+    // inicial (antes se quedaba pegado en el último zoom).
+    onEmpty: () => {
+      if (!map.current) return;
+      setResultCounts({});
+      map.current.flyTo({ center: INITIAL_CENTER, zoom: INITIAL_ZOOM, duration: 800, essential: true });
+    },
   });
   const loadedComunasRef = useRef<Set<string>>(new Set());
   const loadedPoligonosRef = useRef<Set<string>>(new Set());
@@ -842,6 +849,7 @@ export default function MapView({
     if (filteredPoligonos.length === 0) {
       setSourceCoords('poligonos', []);
       setResultCounts(prev => ({ ...prev, poligonos: 0 }));
+      triggerFitBounds();
       return;
     }
     
@@ -2535,6 +2543,7 @@ export default function MapView({
     } else {
       setSourceCoords('activos', []);
       setResultCounts(prev => ({ ...prev, activos: 0 }));
+      triggerFitBounds();
     }
   }, [activos, filters, isPointInSelectedComunas, hasSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius, styleEpoch]);
 
@@ -2710,6 +2719,7 @@ export default function MapView({
     } else {
       setSourceCoords('proyectos', []);
       setResultCounts(prev => ({ ...prev, proyectos: 0 }));
+      triggerFitBounds();
     }
     prevProyectosRef.current = validProyectos;
   }, [proyectosFiltrados, allProyectos, filters.comunas, isPointInSelectedComunas, radialActive, radialState.center, radialState.radiusKm, isPointInRadius, styleEpoch]);

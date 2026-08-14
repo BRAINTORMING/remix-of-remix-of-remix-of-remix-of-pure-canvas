@@ -36,6 +36,7 @@ export function useUnifiedFitBounds(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coordsRef = useRef<Map<string, [number, number][]>>(new Map());
   const triggerRef = useRef(0);
+  const hadCoordsRef = useRef(false);
 
   /**
    * Register coordinates for a source (e.g., 'comunas', 'poligonos', 'activos', 'proyectos')
@@ -91,9 +92,15 @@ export function useUnifiedFitBounds(
 
       if (allCoords.length === 0) {
         // Nothing left on the map: zoom back out instead of silently doing nothing.
-        if (!opts?.skipEmptyFallback) onEmptyRef.current?.();
+        if (!opts?.skipEmptyFallback && hadCoordsRef.current) {
+          hadCoordsRef.current = false;
+          try { map.current.stop(); } catch { /* noop */ }
+          onEmptyRef.current?.();
+        }
         return;
       }
+
+      hadCoordsRef.current = true;
 
       // Cancel any in-flight camera animation so rapid toggles never get stuck.
       try { map.current.stop(); } catch { /* noop */ }
@@ -140,6 +147,7 @@ export function useUnifiedFitBounds(
    */
   const clearAll = useCallback(() => {
     coordsRef.current.clear();
+    hadCoordsRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
