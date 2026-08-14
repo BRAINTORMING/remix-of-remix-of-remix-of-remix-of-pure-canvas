@@ -1198,7 +1198,9 @@ export default function OportunidadesPanel({
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
+
               </div>
             )}
 
