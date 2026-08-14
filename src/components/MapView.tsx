@@ -2200,13 +2200,22 @@ export default function MapView({
       }
     };
 
+    let prevCorredorSelected: string[] = [];
+    const corredorDataCache = new Map<string, any>();
+    const corredorHandlersBound = new Set<string>();
+
     const initCorredor = async () => {
       if (!map.current) return;
       for (const route of CORREDOR_ROUTES) {
         try {
-          const res = await fetch(route.url);
-          if (!res.ok) continue;
-          const geojson = await res.json();
+          let geojson = corredorDataCache.get(route.id);
+          if (!geojson) {
+            const res = await fetch(route.url);
+            if (!res.ok) continue;
+            geojson = await res.json();
+            corredorDataCache.set(route.id, geojson);
+          }
+          if (!map.current) return;
           const b = computeBoundsFromGeoJSON(geojson);
           if (b) corredorBoundsCache.set(route.id, b);
           const srcId = corredorSourceId(route.id);
@@ -2240,7 +2249,10 @@ export default function MapView({
                 'line-width': CORREDOR_BASE_WIDTH,
               },
             });
+          }
 
+          if (!corredorHandlersBound.has(route.id)) {
+            corredorHandlersBound.add(route.id);
             map.current.on('mouseenter', lyrId, (e) => {
               if (!map.current) return;
               map.current.getCanvas().style.cursor = 'pointer';
@@ -2266,18 +2278,17 @@ export default function MapView({
           console.warn('[Corredor] failed to load', route.id, err);
         }
       }
-      // Initial state: nothing selected. The sidebar's "Chile" toggle drives it.
-      applyCorredorSelection([], false);
+      // Re-apply whatever the sidebar currently has selected (no camera move).
+      applyCorredorSelection(prevCorredorSelected, false);
     };
 
-    let prevCorredorSelected: string[] = [];
     const onCorredorSelection = (e: Event) => {
       const detail = (e as CustomEvent<CorredorSelectionDetail>).detail;
       if (!detail) return;
       // Avoid the empty→empty no-op flyTo on initial mount.
       const isInitialEmpty = prevCorredorSelected.length === 0 && detail.selected.length === 0;
-      applyCorredorSelection(detail.selected, !isInitialEmpty);
       prevCorredorSelected = detail.selected;
+      applyCorredorSelection(detail.selected, !isInitialEmpty);
     };
 
     if (map.current.isStyleLoaded()) {
@@ -2285,7 +2296,12 @@ export default function MapView({
     } else {
       map.current.once('load', initCorredor);
     }
+    // setStyle() wipes custom sources/layers → re-add the corridor every time
+    // the basemap style changes and restore the active selection.
+    const onCorredorStyleLoad = () => { initCorredor(); };
+    map.current.on('style.load', onCorredorStyleLoad);
     window.addEventListener(CORREDOR_EVENT, onCorredorSelection as EventListener);
+
 
     // Swap map style in place — no full page reload.
     const onStyleChange = (e: Event) => {
