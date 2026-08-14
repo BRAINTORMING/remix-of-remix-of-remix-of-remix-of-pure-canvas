@@ -250,6 +250,89 @@ export default function MapView({
     };
   }, []);
 
+  // ===== Oportunidades (Explorar zona): marcadores de candidatos =====
+  useEffect(() => {
+    const markers: Array<{ etiqueta: string; el: HTMLDivElement; marker: mapboxgl.Marker }> = [];
+
+    const clear = () => {
+      markers.forEach(({ marker }) => marker.remove());
+      markers.length = 0;
+    };
+
+    const colorByNivel = (n?: string) =>
+      n === 'alto' ? '#ef4444' : n === 'medio' ? '#f59e0b' : '#10b981';
+
+    const onCandidatos = (e: Event) => {
+      if (!map.current) return;
+      clear();
+      const detail = (e as CustomEvent).detail as
+        | { candidatos?: Array<Record<string, unknown>>; mejor?: string | null }
+        | Array<Record<string, unknown>>
+        | undefined;
+      const list = Array.isArray(detail) ? detail : detail?.candidatos ?? [];
+      const mejor = Array.isArray(detail) ? null : detail?.mejor ?? null;
+      const pts: [number, number][] = [];
+
+      list.forEach((c) => {
+        const lat = Number(c.lat);
+        const lon = Number(c.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        const etiqueta = String(c.etiqueta ?? c.nombre ?? '');
+        const color = colorByNivel(c.nivel as string | undefined);
+        const isBest = !!mejor && etiqueta === mejor;
+
+        const el = document.createElement('div');
+        el.className = 'oportunidad-marker';
+        el.style.cssText = 'cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;';
+        el.innerHTML = `
+          <span style="position:absolute;width:26px;height:26px;border-radius:9999px;border:2px solid ${color};opacity:${isBest ? 0.9 : 0};animation:${isBest ? 'oportunidad-pulse 1.6s ease-out infinite' : 'none'};"></span>
+          <span class="oportunidad-dot" style="width:14px;height:14px;border-radius:9999px;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .15s ease;"></span>
+        `;
+        el.title = etiqueta;
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          window.dispatchEvent(new CustomEvent('oportunidades:selectCandidato', { detail: { etiqueta } }));
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([lon, lat])
+          .addTo(map.current!);
+        markers.push({ etiqueta, el, marker });
+        pts.push([lon, lat]);
+      });
+
+      if (pts.length > 0) {
+        try { map.current.stop(); } catch { /* noop */ }
+        if (pts.length === 1) {
+          map.current.flyTo({ center: pts[0], zoom: 13, duration: 900, essential: true });
+        } else {
+          const bounds = pts.reduce((b, p) => b.extend(p), new mapboxgl.LngLatBounds(pts[0], pts[0]));
+          map.current.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 1000, essential: true });
+        }
+      }
+    };
+
+    const onHighlight = (e: Event) => {
+      const etiqueta = ((e as CustomEvent).detail || {}).etiqueta as string | undefined;
+      markers.forEach(({ etiqueta: et, el }) => {
+        const dot = el.querySelector('.oportunidad-dot') as HTMLElement | null;
+        if (dot) dot.style.transform = etiqueta && et === etiqueta ? 'scale(1.8)' : 'scale(1)';
+      });
+    };
+
+    window.addEventListener('oportunidades:candidatos', onCandidatos as EventListener);
+    window.addEventListener('oportunidades:highlightCandidato', onHighlight as EventListener);
+    window.addEventListener('oportunidades:panelClose', clear);
+    return () => {
+      window.removeEventListener('oportunidades:candidatos', onCandidatos as EventListener);
+      window.removeEventListener('oportunidades:highlightCandidato', onHighlight as EventListener);
+      window.removeEventListener('oportunidades:panelClose', clear);
+      clear();
+    };
+  }, []);
+
+
+
   // Match a value against active PRIC eval zone codes (case-insensitive substring).
   const matchesPricEvalZone = useCallback((...vals: (string | null | undefined)[]) => {
     if (!pricEvalZones || pricEvalZones.length === 0) return true;
