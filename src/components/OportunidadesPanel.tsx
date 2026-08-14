@@ -477,6 +477,29 @@ export default function OportunidadesPanel({
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ConsultarViabilidadResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Candidato resaltado — sincroniza tarjeta <-> marcador del mapa.
+  const [candidatoActivo, setCandidatoActivo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onSelect = (e: Event) => {
+      const et = ((e as CustomEvent).detail || {}).etiqueta as string | undefined;
+      setCandidatoActivo(et ?? null);
+      if (et) {
+        document.getElementById(`oportunidad-card-${encodeURIComponent(et)}`)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    };
+    window.addEventListener('oportunidades:selectCandidato', onSelect as EventListener);
+    return () => window.removeEventListener('oportunidades:selectCandidato', onSelect as EventListener);
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('oportunidades:highlightCandidato', { detail: { etiqueta: candidatoActivo } }),
+    );
+  }, [candidatoActivo]);
 
   // Modo A "Explorar zona": pinta un círculo con el radio (reutiliza la capa
   // de Análisis Radial en el mapa) y zoom al punto. Se limpia cuando el modo
@@ -684,7 +707,14 @@ export default function OportunidadesPanel({
         setResponse(resp);
         // Notificar al mapa para pintar pines/ruta si aplica
         if (modo === 'exploracion' && resp?.candidatos) {
-          window.dispatchEvent(new CustomEvent('oportunidades:candidatos', { detail: resp.candidatos }));
+          window.dispatchEvent(
+            new CustomEvent('oportunidades:candidatos', {
+              detail: {
+                candidatos: resp.candidatos,
+                mejor: resp.resumen_comparativo?.mejor_alternativa_etiqueta ?? null,
+              },
+            }),
+          );
           // El círculo (radial:set) ya centra el mapa en exploración.
         }
         if (modo === 'punto_fijo' && currentPoint) {
@@ -900,7 +930,11 @@ export default function OportunidadesPanel({
                   <span>Radio de búsqueda</span>
                   <span className="text-primary font-semibold">{radioKm} km</span>
                 </Label>
-                <Slider min={1} max={10} step={1} value={[radioKm]} onValueChange={(v) => setRadioKm(v[0])} />
+                <Slider min={1} max={50} step={1} value={[radioKm]} onValueChange={(v) => setRadioKm(v[0])} />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>1 km</span>
+                  <span>50 km</span>
+                </div>
               </div>
             )}
 
@@ -1091,8 +1125,30 @@ export default function OportunidadesPanel({
                 <p className="text-[10px] text-muted-foreground italic">
                   Vista exploratoria — sin dictamen definitivo. Haz clic en “Evaluar en detalle” para un análisis completo.
                 </p>
-                {response.candidatos.map((c, i) => (
-                  <div key={c.id ?? i} className="rounded-lg border border-border p-2.5 bg-background/60 space-y-2">
+                {response.candidatos.map((c, i) => {
+                  const etq = c.etiqueta ?? c.nombre ?? '';
+                  const activo = !!etq && candidatoActivo === etq;
+                  return (
+                  <div
+                    key={c.id ?? i}
+                    id={`oportunidad-card-${encodeURIComponent(etq)}`}
+                    onMouseEnter={() => setCandidatoActivo(etq || null)}
+                    onMouseLeave={() => setCandidatoActivo(null)}
+                    onClick={() => {
+                      setCandidatoActivo(etq || null);
+                      if (typeof c.lat === 'number' && typeof c.lon === 'number') {
+                        window.dispatchEvent(
+                          new CustomEvent('oportunidades:fit', {
+                            detail: { center: { lat: c.lat, lng: c.lon }, zoom: 14 },
+                          }),
+                        );
+                      }
+                    }}
+                    className={cn(
+                      'rounded-lg border p-2.5 bg-background/60 space-y-2 cursor-pointer transition-colors',
+                      activo ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : 'border-border',
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       <span className={cn('h-2.5 w-2.5 rounded-full flex-shrink-0', colorDotByNivel(c.nivel))} />
                       <span className="text-xs font-semibold text-foreground flex-1 truncate" title={c.nombre ?? c.etiqueta}>
