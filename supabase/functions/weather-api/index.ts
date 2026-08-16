@@ -214,6 +214,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (body.mode === "windfield") {
+      const bbox = (body.bbox && body.bbox.length === 4
+        ? body.bbox
+        : [-180, -78, 180, 78]) as [number, number, number, number];
+      const cols = Math.max(4, Math.min(48, body.cols ?? 37));
+      const rows = Math.max(4, Math.min(32, body.rows ?? 19));
+      const hours = Math.max(1, Math.min(48, body.hours ?? 24));
+
+      const key = `wf:${cols}x${rows}:${hours}:${bbox.map(b => b.toFixed(1)).join(",")}`;
+      const cached = getCached(key);
+      if (cached) {
+        return new Response(JSON.stringify({ cached: true, ...(cached as object) }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const payload = await buildWindField(bbox, cols, rows, hours);
+      setCached(key, payload, 30 * 60_000);
+      return new Response(JSON.stringify({ cached: false, ...payload }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     return new Response(JSON.stringify({ error: "invalid mode" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
