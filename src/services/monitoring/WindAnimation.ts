@@ -1,10 +1,14 @@
-// Monitoreo Territorial — Wind particle animation (canvas overlay above Mapbox).
-// Non-blocking: samples U/V from Open-Meteo grid, advects thousands of particles
-// with fading trails. Zoom/pan aware. Not a heatmap; no arrows.
+// Monitoreo Territorial — Animación de partículas de viento (canvas sobre Mapbox).
+// Optimizada: campo global U/V precargado (cobertura mundial desde el primer
+// frame), partículas en espacio de pantalla (sin map.project por partícula),
+// pocas partículas pero bien visibles, y pausa durante el paneo/zoom.
 import type mapboxgl from "mapbox-gl";
-import type { GridResponse } from "@/services/monitoring/WeatherService";
+import { WindFieldService, sampleField, type WindFieldData } from "@/services/monitoring/WindField";
 
-interface UV { u: number; v: number }
+const MAX_PARTICLES = 2200;
+const MIN_PARTICLES = 900;
+const MAX_AGE = 110;
+const SPEED_FACTOR = 0.035; // horas simuladas por frame (aprox.)
 
 export class WindAnimation {
   private map: mapboxgl.Map;
@@ -12,11 +16,18 @@ export class WindAnimation {
   private ctx: CanvasRenderingContext2D;
   private raf = 0;
   private running = false;
-  private particles: Array<{ lng: number; lat: number; age: number }> = [];
-  private grid: GridResponse | null = null;
+  private moving = false;
+  private dpr = 1;
+
+  // Partículas en coordenadas de pantalla (CSS px)
+  private px = new Float32Array(0);
+  private py = new Float32Array(0);
+  private age = new Float32Array(0);
+  private count = 0;
+
+  private field: WindFieldData | null = null;
   private hourOffset = 0;
-  private numParticles = 7000;
-  private maxAge = 90;
+  private sample = { u: 0, v: 0 };
 
   constructor(map: mapboxgl.Map) {
     this.map = map;
@@ -25,129 +36,201 @@ export class WindAnimation {
     this.canvas.style.inset = "0";
     this.canvas.style.pointerEvents = "none";
     this.canvas.style.zIndex = "5";
-    this.ctx = this.canvas.getContext("2d")!;
-    const container = map.getContainer();
-    container.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext("2d", { alpha: true })!;
+    map.getContainer().appendChild(this.canvas);
     this.resize();
+
     this.onResize = this.onResize.bind(this);
+    this.onMoveStart = this.onMoveStart.bind(this);
+    this.onMoveEnd = this.onMoveEnd.bind(this);
     window.addEventListener("resize", this.onResize);
     map.on("resize", this.onResize);
-    map.on("move", this.onResize);
+    map.on("movestart", this.onMoveStart);
+    map.on("moveend", this.onMoveEnd);
   }
 
-  setGrid(grid: GridResponse | null) { this.grid = grid; this.seed(); }
+  /** Compatibilidad: el campo ahora es global y se carga solo. */
+  setGrid(_grid?: unknown) {
+    void this.ensureField();
+  }
   setHourOffset(h: number) { this.hourOffset = h; }
 
-  start() { if (this.running) return; this.running = true; this.loop(); }
+  async start() {
+    if (this.running) return;
+    this.running = true;
+    this.seed();
+    this.loop();
+    await this.ensureField();
+    this.seed();
+  }
+
   stop() {
     this.running = false;
     if (this.raf) cancelAnimationFrame(this.raf);
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.raf = 0;
+    this.clear();
   }
+
   destroy() {
     this.stop();
     window.removeEventListener("resize", this.onResize);
     this.map.off("resize", this.onResize);
-    this.map.off("move", this.onResize);
+    this.map.off("movestart", this.onMoveStart);
+    this.map.off("moveend", this.onMoveEnd);
     this.canvas.remove();
   }
 
-  private onResize() { this.resize(); }
+  private async ensureField() {
+    if (this.field) return this.field;
+    try {
+      this.field = await WindFieldService.load();
+    } catch (err) {
+      console.warn("[wind] no se pudo cargar el campo global", err);
+    }
+    return this.field;
+  }
+
+  private onResize() { this.resize(); this.seed(); }
+  private onMoveStart() { this.moving = true; this.clear(); }
+  private onMoveEnd() { this.moving = false; this.seed(); }
+
+  private clear() {
+    const { width, height } = this.canvas;
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctx.restore();
+  }
+
   private resize() {
     const c = this.map.getContainer();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = c.clientWidth * dpr;
-    this.canvas.height = c.clientHeight * dpr;
+    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.canvas.width = Math.max(1, c.clientWidth * this.dpr);
+    this.canvas.height = Math.max(1, c.clientHeight * this.dpr);
     this.canvas.style.width = c.clientWidth + "px";
     this.canvas.style.height = c.clientHeight + "px";
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.ctx.lineCap = "round";
   }
 
   private seed() {
-    const b = this.map.getBounds();
-    if (!b) return;
-    const w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
-    this.particles = new Array(this.numParticles).fill(0).map(() => ({
-      lng: w + Math.random() * (e - w),
-      lat: s + Math.random() * (n - s),
-      age: Math.random() * this.maxAge,
-    }));
+    const w = this.canvas.width / this.dpr;
+    const h = this.canvas.height / this.dpr;
+    // Densidad estable: pocas partículas, bien distribuidas por toda la vista.
+    const target = Math.round(Math.max(MIN_PARTICLES, Math.min(MAX_PARTICLES, (w * h) / 620)));
+    if (target !== this.count) {
+      this.px = new Float32Array(target);
+      this.py = new Float32Array(target);
+      this.age = new Float32Array(target);
+      this.count = target;
+    }
+    for (let i = 0; i < this.count; i++) {
+      this.px[i] = Math.random() * w;
+      this.py[i] = Math.random() * h;
+      this.age[i] = Math.random() * MAX_AGE;
+    }
   }
 
-  private sampleUV(lng: number, lat: number): UV | null {
-    const g = this.grid;
-    if (!g) return null;
-    const [w, s, e, n] = g.bbox;
-    if (lng < w || lng > e || lat < s || lat > n) return null;
-    const fx = ((lng - w) / (e - w)) * (g.cols - 1);
-    const fy = ((lat - s) / (n - s)) * (g.rows - 1);
-    const x0 = Math.floor(fx), y0 = Math.floor(fy);
-    const x1 = Math.min(g.cols - 1, x0 + 1), y1 = Math.min(g.rows - 1, y0 + 1);
-    const tx = fx - x0, ty = fy - y0;
+  // ---- Proyección inversa rápida (mercator, sin rotación/pitch) ----
+  private viewCache = {
+    ok: false, cx: 0, cy: 0, mcx: 0, mcy: 0, worldSize: 1,
+  };
 
-    const idx = (x: number, y: number) => y * g.cols + x;
-    const at = (cellIdx: number): UV | null => {
-      const cell = g.grid[cellIdx];
-      if (!cell?.hourly) return null;
-      const h = cell.hourly;
-      const i = Math.min(this.hourOffset, (h.time?.length ?? 1) - 1);
-      const spd = h.wind_speed_10m?.[i]; // km/h
-      const dir = h.wind_direction_10m?.[i]; // meteorological deg (from)
-      if (spd == null || dir == null) return null;
-      // Convert "from" direction to velocity vector (to-direction) in degrees space
-      const rad = ((dir + 180) % 360) * Math.PI / 180;
-      return { u: Math.sin(rad) * spd, v: Math.cos(rad) * spd };
+  private updateView() {
+    const rotated = Math.abs(this.map.getBearing()) > 0.01 || this.map.getPitch() > 0.01;
+    const c = this.map.getCenter();
+    const worldSize = 512 * Math.pow(2, this.map.getZoom());
+    this.viewCache = {
+      ok: !rotated,
+      cx: (this.canvas.width / this.dpr) / 2,
+      cy: (this.canvas.height / this.dpr) / 2,
+      mcx: (c.lng + 180) / 360,
+      mcy: mercY(c.lat),
+      worldSize,
     };
-    const a = at(idx(x0, y0)); const b = at(idx(x1, y0));
-    const c = at(idx(x0, y1)); const d = at(idx(x1, y1));
-    if (!a && !b && !c && !d) return null;
-    const A = a ?? b ?? c ?? d!;
-    const B = b ?? A; const C = c ?? A; const D = d ?? A;
-    const u = (A.u * (1 - tx) + B.u * tx) * (1 - ty) + (C.u * (1 - tx) + D.u * tx) * ty;
-    const v = (A.v * (1 - tx) + B.v * tx) * (1 - ty) + (C.v * (1 - tx) + D.v * tx) * ty;
-    return { u, v };
   }
+
+  private screenToLngLat(x: number, y: number, out: { lng: number; lat: number }) {
+    const vc = this.viewCache;
+    if (vc.ok) {
+      const mx = vc.mcx + (x - vc.cx) / vc.worldSize;
+      const my = vc.mcy + (y - vc.cy) / vc.worldSize;
+      out.lng = mx * 360 - 180;
+      out.lat = invMercY(my);
+    } else {
+      const ll = this.map.unproject([x, y]);
+      out.lng = ll.lng;
+      out.lat = ll.lat;
+    }
+  }
+
+  private ll = { lng: 0, lat: 0 };
 
   private loop = () => {
     if (!this.running) return;
+    this.raf = requestAnimationFrame(this.loop);
+    if (this.moving || !this.field || !this.count) return;
+
     const ctx = this.ctx;
-    // Fade trails
+    const w = this.canvas.width / this.dpr;
+    const h = this.canvas.height / this.dpr;
+
+    // Estela: desvanecido suave.
     ctx.globalCompositeOperation = "destination-in";
-    ctx.fillStyle = "rgba(0,0,0,0.94)";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillStyle = "rgba(0,0,0,0.90)";
+    ctx.fillRect(0, 0, w, h);
     ctx.globalCompositeOperation = "source-over";
 
-    if (this.grid && this.particles.length) {
-      const b = this.map.getBounds();
-      if (!b) { this.raf = requestAnimationFrame(this.loop); return; }
-      const w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
-      // Speed factor: km/h → degrees/frame (very rough)
-      const spdFactor = 0.00006;
+    this.updateView();
+    const pxPerDeg = this.viewCache.worldSize / 360;
 
-      ctx.lineWidth = 2;
-      for (const p of this.particles) {
-        p.age++;
-        const uv = this.sampleUV(p.lng, p.lat);
-        if (!uv || p.age > this.maxAge || p.lng < w || p.lng > e || p.lat < s || p.lat > n) {
-          p.lng = w + Math.random() * (e - w);
-          p.lat = s + Math.random() * (n - s);
-          p.age = 0;
-          continue;
-        }
-        const prev = this.map.project([p.lng, p.lat]);
-        p.lng += uv.u * spdFactor;
-        p.lat += uv.v * spdFactor;
-        const cur = this.map.project([p.lng, p.lat]);
-        const mag = Math.hypot(uv.u, uv.v);
-        const alpha = Math.min(0.9, 0.25 + mag / 80);
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.beginPath();
-        ctx.moveTo(prev.x, prev.y);
-        ctx.lineTo(cur.x, cur.y);
-        ctx.stroke();
+    for (let i = 0; i < this.count; i++) {
+      const x = this.px[i], y = this.py[i];
+      this.age[i] += 1;
+
+      if (this.age[i] > MAX_AGE || x < -20 || x > w + 20 || y < -20 || y > h + 20) {
+        this.px[i] = Math.random() * w;
+        this.py[i] = Math.random() * h;
+        this.age[i] = 0;
+        continue;
       }
-    }
 
-    this.raf = requestAnimationFrame(this.loop);
+      this.screenToLngLat(x, y, this.ll);
+      if (!sampleField(this.field, this.ll.lng, this.ll.lat, this.hourOffset, this.sample)) {
+        this.age[i] = MAX_AGE + 1;
+        continue;
+      }
+
+      const cosLat = Math.max(0.15, Math.cos((this.ll.lat * Math.PI) / 180));
+      const k = (pxPerDeg / (111 * cosLat)) * SPEED_FACTOR;
+      const dx = this.sample.u * k;
+      const dy = -this.sample.v * k;
+
+      const nx = x + dx, ny = y + dy;
+      const mag = Math.hypot(this.sample.u, this.sample.v);
+
+      // Partículas pocas pero nítidas: grosor y brillo según velocidad.
+      const alpha = Math.min(0.95, 0.42 + mag / 70);
+      ctx.strokeStyle = mag > 45
+        ? `rgba(255,246,214,${alpha})`
+        : `rgba(255,255,255,${alpha})`;
+      ctx.lineWidth = mag > 45 ? 2.1 : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(nx, ny);
+      ctx.stroke();
+
+      this.px[i] = nx;
+      this.py[i] = ny;
+    }
   };
+}
+
+function mercY(lat: number) {
+  const s = Math.sin((Math.max(-85.05, Math.min(85.05, lat)) * Math.PI) / 180);
+  return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+}
+function invMercY(my: number) {
+  const n = Math.PI * (1 - 2 * my);
+  return (180 / Math.PI) * Math.atan(Math.sinh(n));
 }
