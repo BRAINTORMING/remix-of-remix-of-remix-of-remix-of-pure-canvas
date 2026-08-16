@@ -60,8 +60,7 @@ export default function MonitoringController() {
       mgr.refreshForViewport();
       // Also refetch firms if active
       if (active.has("firms")) refreshFirms(ready);
-      // Wind uses same grid
-      window.setTimeout(() => wind.setGrid(mgr.getGrid()), 300);
+      // El viento usa un campo global precargado; no depende del viewport.
     }, 600);
     ready.on("moveend", onMoveEnd);
 
