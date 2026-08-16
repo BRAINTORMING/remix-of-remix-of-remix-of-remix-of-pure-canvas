@@ -73,6 +73,76 @@ async function fetchGrid(lats: number[], lons: number[]) {
   return await r.json();
 }
 
+// --- Wind field (U/V) ------------------------------------------------------
+// Devuelve una grilla regular (global por defecto) con componentes U/V del
+// viento por hora, en formato compacto (arrays planos) para animar partículas.
+async function fetchWindChunk(lats: number[], lons: number[], hours: number) {
+  const url = new URL(OPEN_METEO);
+  url.searchParams.set("latitude", lats.join(","));
+  url.searchParams.set("longitude", lons.join(","));
+  url.searchParams.set("hourly", "wind_speed_10m,wind_direction_10m");
+  url.searchParams.set("forecast_hours", String(hours));
+  url.searchParams.set("timezone", "GMT");
+  url.searchParams.set("wind_speed_unit", "kmh");
+  const r = await fetch(url.toString());
+  if (!r.ok) throw new Error(`open-meteo wind ${r.status}: ${await r.text()}`);
+  const j = await r.json();
+  return Array.isArray(j) ? j : [j];
+}
+
+async function buildWindField(
+  bbox: [number, number, number, number],
+  cols: number,
+  rows: number,
+  hours: number,
+) {
+  const [w, s, e, n] = bbox;
+  const lats: number[] = [];
+  const lons: number[] = [];
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      lons.push(Number((w + ((e - w) * i) / (cols - 1)).toFixed(3)));
+      lats.push(Number((s + ((n - s) * j) / (rows - 1)).toFixed(3)));
+    }
+  }
+
+  const CHUNK = 100;
+  const chunks: Array<{ start: number; lats: number[]; lons: number[] }> = [];
+  for (let i = 0; i < lats.length; i += CHUNK) {
+    chunks.push({ start: i, lats: lats.slice(i, i + CHUNK), lons: lons.slice(i, i + CHUNK) });
+  }
+
+  const total = cols * rows;
+  const u = new Array(total * hours).fill(0);
+  const v = new Array(total * hours).fill(0);
+
+  const CONCURRENCY = 3;
+  let next = 0;
+  const worker = async () => {
+    while (next < chunks.length) {
+      const c = chunks[next++];
+      const points = await fetchWindChunk(c.lats, c.lons, hours);
+      points.forEach((p: any, k: number) => {
+        const cell = c.start + k;
+        const spd = p?.hourly?.wind_speed_10m ?? [];
+        const dir = p?.hourly?.wind_direction_10m ?? [];
+        for (let h = 0; h < hours; h++) {
+          const S = spd[h], D = dir[h];
+          if (S == null || D == null) continue;
+          const rad = ((D + 180) % 360) * Math.PI / 180;
+          u[h * total + cell] = Math.round(Math.sin(rad) * S * 10) / 10;
+          v[h * total + cell] = Math.round(Math.cos(rad) * S * 10) / 10;
+        }
+      });
+    }
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+
+  return { cols, rows, bbox, hours, u, v, generated_at: new Date().toISOString() };
+}
+
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
