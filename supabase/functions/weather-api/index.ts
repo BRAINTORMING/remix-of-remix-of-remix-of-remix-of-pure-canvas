@@ -19,12 +19,13 @@ const HOURLY_VARS = [
 const CURRENT_VARS = HOURLY_VARS;
 
 interface Body {
-  mode: "point" | "grid";
+  mode: "point" | "grid" | "windfield";
   lat?: number;
   lon?: number;
   bbox?: [number, number, number, number];
   cols?: number;
   rows?: number;
+  hours?: number;
 }
 
 // Simple in-memory LRU-ish cache per isolate. Not durable, but reduces upstream hits.
