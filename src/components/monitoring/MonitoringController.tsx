@@ -149,13 +149,8 @@ export default function MonitoringController() {
 
       if (d.id === "wind") {
         if (d.on) {
-          // Ensure grid, then start
-          (async () => {
-            await (mgr as any).ensureGrid?.();
-            wind.setGrid(mgr.getGrid());
-            wind.setHourOffset(mgr.currentHourOffset());
-            wind.start();
-          })();
+          wind.setHourOffset(hourOffset);
+          void wind.start();
         } else wind.stop();
       } else if (d.id === "firms") {
         if (d.on) refreshFirms(map);
