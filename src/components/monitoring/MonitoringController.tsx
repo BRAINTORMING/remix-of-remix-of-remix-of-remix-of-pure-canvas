@@ -60,8 +60,7 @@ export default function MonitoringController() {
       mgr.refreshForViewport();
       // Also refetch firms if active
       if (active.has("firms")) refreshFirms(ready);
-      // Wind uses same grid
-      window.setTimeout(() => wind.setGrid(mgr.getGrid()), 300);
+      // El viento usa un campo global precargado; no depende del viewport.
     }, 600);
     ready.on("moveend", onMoveEnd);
 
@@ -149,13 +148,8 @@ export default function MonitoringController() {
 
       if (d.id === "wind") {
         if (d.on) {
-          // Ensure grid, then start
-          (async () => {
-            await (mgr as any).ensureGrid?.();
-            wind.setGrid(mgr.getGrid());
-            wind.setHourOffset(mgr.currentHourOffset());
-            wind.start();
-          })();
+          wind.setHourOffset(hourOffset);
+          void wind.start();
         } else wind.stop();
       } else if (d.id === "firms") {
         if (d.on) refreshFirms(map);
