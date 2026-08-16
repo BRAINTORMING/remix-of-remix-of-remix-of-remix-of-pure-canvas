@@ -160,6 +160,10 @@ export default function MonitoringController() {
       } else if (d.id === "temperature") {
         // Migrada a tiles XYZ — ya no pasa por el WeatherLayerManager viejo.
         tileMgrRef.current?.setActive("temperature", d.on);
+      } else if (d.id === "rain") {
+        // Migrada a tiles XYZ — el id de UI es "rain" pero el tile manager
+        // espera "precipitation" (así se llama la variable en weather-tile).
+        tileMgrRef.current?.setActive("precipitation", d.on);
       } else {
         mgr.setActive(d.id, d.on);
       }
