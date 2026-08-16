@@ -15,6 +15,46 @@ export interface WindFieldData {
 let cache: WindFieldData | null = null;
 let inflight: Promise<WindFieldData> | null = null;
 
+const GLOBAL_BBOX: [number, number, number, number] = [-180, -78, 180, 78];
+
+/** Construye el campo global a partir del modo "points" (siempre disponible),
+ *  como respaldo si el modo "windfield" no está desplegado. */
+async function loadViaPoints(cols = 25, rows = 13, hours = 24): Promise<WindFieldData> {
+  const [w, s, e, n] = GLOBAL_BBOX;
+  const points: { lat: number; lon: number }[] = [];
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      points.push({
+        lat: Number((s + ((n - s) * j) / (rows - 1)).toFixed(3)),
+        lon: Number((w + ((e - w) * i) / (cols - 1)).toFixed(3)),
+      });
+    }
+  }
+
+  const { data, error } = await supabase.functions.invoke("weather-api", {
+    body: { mode: "points", points },
+  });
+  if (error) throw error;
+
+  const total = cols * rows;
+  const u = new Float32Array(total * hours);
+  const v = new Float32Array(total * hours);
+  const list = (data as any)?.points ?? [];
+  list.forEach((p: any, cell: number) => {
+    const spd = p?.hourly?.wind_speed_10m ?? [];
+    const dir = p?.hourly?.wind_direction_10m ?? [];
+    for (let h = 0; h < hours; h++) {
+      const S = spd[h], D = dir[h];
+      if (S == null || D == null) continue;
+      const rad = ((D + 180) % 360) * Math.PI / 180;
+      u[h * total + cell] = Math.sin(rad) * S;
+      v[h * total + cell] = Math.cos(rad) * S;
+    }
+  });
+
+  return { cols, rows, bbox: GLOBAL_BBOX, hours, u, v };
+}
+
 export const WindFieldService = {
   get(): WindFieldData | null {
     return cache;
@@ -24,29 +64,38 @@ export const WindFieldService = {
     if (cache) return cache;
     if (inflight) return inflight;
 
-    inflight = supabase.functions
-      .invoke("weather-api", { body: { mode: "windfield", cols: 37, rows: 19, hours: 24 } })
-      .then(({ data, error }) => {
+    inflight = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("weather-api", {
+          body: { mode: "windfield", cols: 37, rows: 19, hours: 24 },
+        });
         if (error) throw error;
         const d = data as any;
+        if (!d?.u?.length) throw new Error("windfield vacío");
         const field: WindFieldData = {
           cols: d.cols,
           rows: d.rows,
           bbox: d.bbox,
           hours: d.hours,
-          u: Float32Array.from(d.u ?? []),
-          v: Float32Array.from(d.v ?? []),
+          u: Float32Array.from(d.u),
+          v: Float32Array.from(d.v),
         };
         cache = field;
         return field;
-      })
-      .finally(() => {
-        inflight = null;
-      });
+      } catch (err) {
+        console.warn("[wind] modo windfield no disponible, usando 'points'", err);
+        const field = await loadViaPoints();
+        cache = field;
+        return field;
+      }
+    })().finally(() => {
+      inflight = null;
+    });
 
     return inflight;
   },
 };
+
 
 // Muestreo bilineal en (lng, lat) para una hora dada. Devuelve km/h en u/v.
 export function sampleField(
