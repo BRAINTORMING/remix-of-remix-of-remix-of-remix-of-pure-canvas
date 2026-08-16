@@ -28,19 +28,49 @@ const WHITE_THRESHOLD = 240;
 const PRECIP_BLUR_PX = 3;
 
 let precipProtocolRegistered = false;
+let precipProtocolAvailable = false;
+
+// Algunos builds de producción interoperan el módulo CJS de mapbox-gl de
+// forma distinta a dev y el default import puede terminar siendo un
+// namespace { default: RealMapboxGL } en vez del objeto real. Resolvemos
+// ambos casos acá.
+function resolveMapboxGlNamespace(): any {
+  const ns = mapboxgl as any;
+  if (ns && typeof ns.addProtocol === "function") return ns;
+  if (ns && ns.default && typeof ns.default.addProtocol === "function") return ns.default;
+  return null;
+}
 
 function ensurePrecipProtocolRegistered() {
   if (precipProtocolRegistered) return;
   precipProtocolRegistered = true;
 
-  mapboxgl.addProtocol(PRECIP_PROTOCOL, async (params, abortController) => {
-    const realUrl = params.url.replace(`${PRECIP_PROTOCOL}://`, "");
-    const res = await fetch(realUrl, { signal: abortController?.signal as AbortSignal | undefined });
-    if (!res.ok) throw new Error(`precip tile fetch failed: ${res.status}`);
-    const blob = await res.blob();
-    const buffer = await processPrecipTileBlob(blob);
-    return { data: buffer };
-  });
+  const gl = resolveMapboxGlNamespace();
+  if (!gl) {
+    // No crasheamos nunca por esto: si el protocolo no está disponible en
+    // este build, precipitation simplemente se muestra sin el post-proceso
+    // (sin blur/transparencia) en vez de tirar abajo todo el mapa.
+    console.warn(
+      "[WeatherTileLayerManager] mapboxgl.addProtocol no está disponible; " +
+      "precipitation se mostrará sin post-proceso (fondo blanco, sin blur).",
+    );
+    return;
+  }
+
+  try {
+    gl.addProtocol(PRECIP_PROTOCOL, async (params: any, abortController: any) => {
+      const realUrl = params.url.replace(`${PRECIP_PROTOCOL}://`, "");
+      const res = await fetch(realUrl, { signal: abortController?.signal as AbortSignal | undefined });
+      if (!res.ok) throw new Error(`precip tile fetch failed: ${res.status}`);
+      const blob = await res.blob();
+      const buffer = await processPrecipTileBlob(blob);
+      return { data: buffer };
+    });
+    precipProtocolAvailable = true;
+  } catch (err) {
+    console.warn("[WeatherTileLayerManager] fallo registrando protocolo precip-fx, fallback sin post-proceso", err);
+    precipProtocolAvailable = false;
+  }
 }
 
 async function processPrecipTileBlob(blob: Blob): Promise<ArrayBuffer> {
@@ -87,7 +117,11 @@ export class WeatherTileLayerManager {
 
   constructor(map: mapboxgl.Map) {
     this.map = map;
-    ensurePrecipProtocolRegistered();
+    try {
+      ensurePrecipProtocolRegistered();
+    } catch (err) {
+      console.warn("[WeatherTileLayerManager] no se pudo registrar el protocolo precip-fx", err);
+    }
   }
 
   isTileReady(variable: string) {
@@ -143,9 +177,10 @@ export class WeatherTileLayerManager {
   private tilePattern(variable: string) {
     const url = `${TILE_FN_URL}/${variable}/{z}/{x}/{y}?hour=${this.hourOffset}`;
     // Solo precipitation pasa por el protocolo de post-proceso (blanco
-    // transparente + blur). El resto (temperature, etc.) mantiene el
-    // comportamiento actual sin ningún cambio.
-    if (variable === "precipitation") {
+    // transparente + blur), y solo si el protocolo pudo registrarse en este
+    // build. El resto (temperature, etc.) mantiene el comportamiento actual
+    // sin ningún cambio.
+    if (variable === "precipitation" && precipProtocolAvailable) {
       return `${PRECIP_PROTOCOL}://${url}`;
     }
     return url;
