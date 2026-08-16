@@ -3,7 +3,7 @@ import type mapboxgl from "mapbox-gl";
 
 const TILE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/weather-tile`;
 
-const TILE_READY_VARIABLES = new Set(["temperature"]);
+const TILE_READY_VARIABLES = new Set(["temperature", "precipitation"]);
 
 const BASE_MAX_ZOOM = 3;
 const DETAIL_MIN_ZOOM = 4;
