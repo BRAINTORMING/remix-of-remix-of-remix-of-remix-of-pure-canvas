@@ -839,12 +839,15 @@ export default function MapView({
     });
     keysToRemove.forEach(key => removePoligonoLayer(key));
     
-    // If no poligonos selected, just return (don't reset view - let comunas handle that)
+    // No polygons left: drop their bounds and re-fit to what remains
+    // (or restore the globe if nothing else is drawn).
     if (filteredPoligonos.length === 0) {
       setSourceCoords('poligonos', []);
       setResultCounts(prev => ({ ...prev, poligonos: 0 }));
+      triggerFitBounds({ duration: 900, debounceMs: 60 });
       return;
     }
+
     
     // Load all selected poligonos and calculate bounds
     const loadAndZoomPoligonos = async () => {
