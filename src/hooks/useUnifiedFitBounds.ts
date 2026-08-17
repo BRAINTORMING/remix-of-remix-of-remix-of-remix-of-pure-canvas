@@ -129,6 +129,17 @@ export function useUnifiedFitBounds(
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
+  /** True when at least one source still has coordinates registered. */
+  const hasCoords = useCallback((exclude?: string[]) => {
+    let found = false;
+    coordsRef.current.forEach((coords, source) => {
+      if (exclude?.includes(source)) return;
+      if (coords.length > 0) found = true;
+    });
+    return found;
+  }, []);
+
+
   /**
    * Get total count of visible elements across all sources.
    */
