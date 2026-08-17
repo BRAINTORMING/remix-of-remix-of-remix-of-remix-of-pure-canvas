@@ -942,7 +942,7 @@ export default function MapView({
         }
       });
 
-      // Add label
+      // Punto de localización (sin texto): solo un marcador circular en el centroide.
       if (centroid) {
         map.current.addSource(labelSourceId, {
           type: 'geojson',
@@ -958,56 +958,41 @@ export default function MapView({
 
         map.current.addLayer({
           id: labelLayerId,
-          type: 'symbol',
+          type: 'circle',
           source: labelSourceId,
-          layout: {
-            'text-field': ['get', 'label'],
-            'text-size': 11,
-            'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-            'text-max-width': 12,
-            'text-allow-overlap': true,
-            'text-ignore-placement': true
-          },
           paint: {
-            'text-color': '#ffffff',
-            'text-halo-color': '#000000',
-            'text-halo-width': 2,
-            'text-halo-blur': 0
+            'circle-radius': 5,
+            'circle-color': color,
+            'circle-stroke-width': 1.5,
+            'circle-stroke-color': '#ffffff',
+            'circle-opacity': 0.95,
           }
+        });
+
+        map.current.on('mouseenter', labelLayerId, () => {
+          if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+        });
+        map.current.on('mouseleave', labelLayerId, () => {
+          if (map.current) map.current.getCanvas().style.cursor = '';
+        });
+        map.current.on('click', labelLayerId, () => {
+          openDetailPanel({
+            type: 'planRegulador',
+            data: { capa: planRegulador.capa },
+            color,
+          });
         });
       }
 
-      // Compact hover summary
-      const popupContent = summaryHTML({
-        title: planRegulador.capa,
-        badge: 'Plan Regulador',
-        color,
-      });
-
-      let layerPopup: mapboxgl.Popup | null = null;
-
-      map.current.on('mouseenter', fillLayerId, (e) => {
+      // Cursor sobre el polígono (la descripción se muestra solo al hacer clic).
+      map.current.on('mouseenter', fillLayerId, () => {
         if (map.current) map.current.getCanvas().style.cursor = 'pointer';
-        if (!e.lngLat) return;
-        if (activePopup.current) activePopup.current.remove();
-        layerPopup = new mapboxgl.Popup({
-          offset: [0, -10],
-          maxWidth: '280px',
-          closeOnMove: false,
-          closeButton: false,
-          closeOnClick: false,
-        })
-          .setLngLat(e.lngLat)
-          .setHTML(popupContent)
-          .addTo(map.current!);
-        activePopup.current = layerPopup;
       });
 
       map.current.on('mouseleave', fillLayerId, () => {
         if (map.current) map.current.getCanvas().style.cursor = '';
-        if (layerPopup) { layerPopup.remove(); layerPopup = null; }
-        if (activePopup.current) activePopup.current = null;
       });
+
 
       // Click → open detail panel
       map.current.on('click', fillLayerId, () => {
