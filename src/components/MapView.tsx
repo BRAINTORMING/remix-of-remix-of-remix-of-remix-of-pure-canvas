@@ -691,20 +691,16 @@ export default function MapView({
     });
     comunasToRemove.forEach(comunaId => removeComunaLayer(comunaId));
     
-    // If no comunas selected, clear comuna bounds source
+    // If no comunas selected, clear comuna bounds source and re-fit to
+    // whatever is still drawn. If nothing remains, the hook's onEmpty
+    // handler restores the initial globe view (no "stuck" zoom).
     if (selectedComunas.length === 0) {
       setSourceCoords('comunas', []);
       setResultCounts(prev => ({ ...prev, comunas: 0 }));
-      // Only reset if NO other filters are active
-      const hasOtherFilters = (filters.capas?.length > 0) || (filters.categorias?.length > 0) || 
-        (filters.poligonos?.length > 0) || (filters.planRegulador?.length > 0);
-      if (!hasOtherFilters) {
-        resetToInitialView();
-      } else {
-        triggerFitBounds();
-      }
+      triggerFitBounds({ duration: 900, debounceMs: 60 });
       return;
     }
+
     
     // Load all selected comunas and calculate bounds for ALL of them
     const loadComunas = () => {
