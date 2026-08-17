@@ -132,12 +132,17 @@ export default function MapView({
   const tarapacaMarker = useRef<mapboxgl.Marker | null>(null);
   
   // Unified fitBounds system
-  const { setSourceCoords, triggerFitBounds, clearAll: clearAllBounds } = useUnifiedFitBounds(map, {
-    debounceMs: 200,
+  // Snappier defaults: shorter debounce + shorter camera animation so the
+  // zoom follows the checkbox interaction almost immediately.
+  const resetViewRef = useRef<() => void>(() => {});
+  const { setSourceCoords, triggerFitBounds, clearAll: clearAllBounds, hasCoords } = useUnifiedFitBounds(map, {
+    debounceMs: 80,
     padding: 80,
     maxZoom: 14,
-    duration: 1800,
+    duration: 800,
+    onEmpty: () => resetViewRef.current?.(),
   });
+
   const loadedComunasRef = useRef<Set<string>>(new Set());
   const loadedPoligonosRef = useRef<Set<string>>(new Set());
   const loadedPlanReguladorRef = useRef<Set<string>>(new Set());
