@@ -1874,31 +1874,61 @@ export default function MapView({
     }
   };
 
-  // Function to reset to initial globe view - clears all bounds and resets
+  // Function to reset to initial globe view - clears all bounds, wipes every
+  // drawn overlay (comunas, medioambiente, plan regulador) and flies back to
+  // the globe so nothing stays "stuck" on screen.
   const resetToInitialView = useCallback(() => {
     if (!map.current) return;
-    
+
     // Clear all unified bounds sources
     clearAllBounds();
     setResultCounts({});
-    
-    // Force-remove all polygon layers currently on the map so the reset
+
+    // Force-remove all overlay layers currently on the map so the reset
     // visually clears the map even if the parent filter state is slow to update.
     try {
-      const ids = Array.from(loadedComunasRef.current);
-      ids.forEach(comunaId => removeComunaLayer(comunaId));
+      Array.from(loadedComunasRef.current).forEach(id => removeComunaLayer(id));
       loadedComunasRef.current.clear();
+      Array.from(loadedPoligonosRef.current).forEach(key => removePoligonoLayer(key));
+      loadedPoligonosRef.current.clear();
+      Array.from(loadedPlanReguladorRef.current).forEach(key => removePlanReguladorLayer(key));
+      loadedPlanReguladorRef.current.clear();
     } catch (err) {
-      console.warn('[reset] error removing comuna layers', err);
+      console.warn('[reset] error removing overlay layers', err);
     }
-    
+
     map.current.flyTo({
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
-      duration: 800,
+      duration: 900,
       essential: true,
     });
   }, [clearAllBounds]);
+
+  // Keep the hook's onEmpty callback pointing at the latest reset function.
+  resetViewRef.current = resetToInitialView;
+
+  // Full reset (explicit "Restablecer filtros"): overlay cleanup above plus
+  // consultation artifacts — PRIC boundary, PRIC/radial markers, zone focus.
+  const hardResetView = useCallback(() => {
+    resetToInitialView();
+    try {
+      removePricLimiteLayer();
+      pricLimiteEnabledRef.current = false;
+      if (pricMarkerRef.current) {
+        pricMarkerRef.current.remove();
+        pricMarkerRef.current = null;
+      }
+      if (radialMarkerRef.current) {
+        radialMarkerRef.current.remove();
+        radialMarkerRef.current = null;
+      }
+    } catch (err) {
+      console.warn('[reset] error clearing consultation layers', err);
+    }
+    setPricEvalZones(null);
+  }, [resetToInitialView, removePricLimiteLayer]);
+
 
 
   // SVG path mapping for icons (Lucide icons SVG paths)
