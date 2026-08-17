@@ -164,6 +164,10 @@ export default function MonitoringController() {
         // Migrada a tiles XYZ — el id de UI es "rain" pero el tile manager
         // espera "precipitation" (así se llama la variable en weather-tile).
         tileMgrRef.current?.setActive("precipitation", d.on);
+      } else if (d.id === "solar") {
+        // Migrada a tiles XYZ — mismo nombre de variable en UI y en
+        // weather-tile ("solar" -> shortwave_radiation).
+        tileMgrRef.current?.setActive("solar", d.on);
       } else {
         mgr.setActive(d.id, d.on);
       }
