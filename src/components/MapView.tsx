@@ -2370,7 +2370,7 @@ export default function MapView({
   // Reset view only on rising edge of onResetView flag
   useEffect(() => {
     if (onResetView && !lastResetFlag.current) {
-      resetToInitialView();
+      hardResetView();
     }
     lastResetFlag.current = !!onResetView;
   }, [onResetView]);
