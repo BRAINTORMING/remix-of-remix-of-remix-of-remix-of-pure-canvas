@@ -162,6 +162,8 @@ export function useUnifiedFitBounds(
     setSourceCoords,
     triggerFitBounds,
     clearAll,
+    hasCoords,
     getTotalCount,
   };
+
 }
