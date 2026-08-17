@@ -10,6 +10,8 @@ interface FitBoundsOptions {
   maxZoom?: number;
   /** Animation duration */
   duration?: number;
+  /** Called when a fit is requested but no coordinates remain registered. */
+  onEmpty?: () => void;
 }
 
 /**
@@ -21,11 +23,15 @@ export function useUnifiedFitBounds(
   options: FitBoundsOptions = {}
 ) {
   const {
-    debounceMs = 200,
+    debounceMs = 90,
     padding = 80,
     maxZoom = 14,
-    duration = 1800,
+    duration = 900,
   } = options;
+
+  const onEmptyRef = useRef(options.onEmpty);
+  onEmptyRef.current = options.onEmpty;
+
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coordsRef = useRef<Map<string, [number, number][]>>(new Map());
