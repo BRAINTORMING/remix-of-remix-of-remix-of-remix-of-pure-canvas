@@ -77,7 +77,12 @@ export function useUnifiedFitBounds(
         allCoords.push(...coords);
       });
 
-      if (allCoords.length === 0) return;
+      if (allCoords.length === 0) {
+        // Nothing left on the map → let the owner restore the initial view.
+        onEmptyRef.current?.();
+        return;
+      }
+
 
       const effPadding = opts?.padding ?? padding;
       const effMaxZoom = opts?.maxZoom ?? maxZoom;
