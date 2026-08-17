@@ -132,12 +132,17 @@ export default function MapView({
   const tarapacaMarker = useRef<mapboxgl.Marker | null>(null);
   
   // Unified fitBounds system
-  const { setSourceCoords, triggerFitBounds, clearAll: clearAllBounds } = useUnifiedFitBounds(map, {
-    debounceMs: 200,
+  // Snappier defaults: shorter debounce + shorter camera animation so the
+  // zoom follows the checkbox interaction almost immediately.
+  const resetViewRef = useRef<() => void>(() => {});
+  const { setSourceCoords, triggerFitBounds, clearAll: clearAllBounds, hasCoords } = useUnifiedFitBounds(map, {
+    debounceMs: 80,
     padding: 80,
     maxZoom: 14,
-    duration: 1800,
+    duration: 800,
+    onEmpty: () => resetViewRef.current?.(),
   });
+
   const loadedComunasRef = useRef<Set<string>>(new Set());
   const loadedPoligonosRef = useRef<Set<string>>(new Set());
   const loadedPlanReguladorRef = useRef<Set<string>>(new Set());
@@ -686,20 +691,16 @@ export default function MapView({
     });
     comunasToRemove.forEach(comunaId => removeComunaLayer(comunaId));
     
-    // If no comunas selected, clear comuna bounds source
+    // If no comunas selected, clear comuna bounds source and re-fit to
+    // whatever is still drawn. If nothing remains, the hook's onEmpty
+    // handler restores the initial globe view (no "stuck" zoom).
     if (selectedComunas.length === 0) {
       setSourceCoords('comunas', []);
       setResultCounts(prev => ({ ...prev, comunas: 0 }));
-      // Only reset if NO other filters are active
-      const hasOtherFilters = (filters.capas?.length > 0) || (filters.categorias?.length > 0) || 
-        (filters.poligonos?.length > 0) || (filters.planRegulador?.length > 0);
-      if (!hasOtherFilters) {
-        resetToInitialView();
-      } else {
-        triggerFitBounds();
-      }
+      triggerFitBounds({ duration: 900, debounceMs: 60 });
       return;
     }
+
     
     // Load all selected comunas and calculate bounds for ALL of them
     const loadComunas = () => {
@@ -838,12 +839,15 @@ export default function MapView({
     });
     keysToRemove.forEach(key => removePoligonoLayer(key));
     
-    // If no poligonos selected, just return (don't reset view - let comunas handle that)
+    // No polygons left: drop their bounds and re-fit to what remains
+    // (or restore the globe if nothing else is drawn).
     if (filteredPoligonos.length === 0) {
       setSourceCoords('poligonos', []);
       setResultCounts(prev => ({ ...prev, poligonos: 0 }));
+      triggerFitBounds({ duration: 900, debounceMs: 60 });
       return;
     }
+
     
     // Load all selected poligonos and calculate bounds
     const loadAndZoomPoligonos = async () => {
@@ -1870,31 +1874,61 @@ export default function MapView({
     }
   };
 
-  // Function to reset to initial globe view - clears all bounds and resets
+  // Function to reset to initial globe view - clears all bounds, wipes every
+  // drawn overlay (comunas, medioambiente, plan regulador) and flies back to
+  // the globe so nothing stays "stuck" on screen.
   const resetToInitialView = useCallback(() => {
     if (!map.current) return;
-    
+
     // Clear all unified bounds sources
     clearAllBounds();
     setResultCounts({});
-    
-    // Force-remove all polygon layers currently on the map so the reset
+
+    // Force-remove all overlay layers currently on the map so the reset
     // visually clears the map even if the parent filter state is slow to update.
     try {
-      const ids = Array.from(loadedComunasRef.current);
-      ids.forEach(comunaId => removeComunaLayer(comunaId));
+      Array.from(loadedComunasRef.current).forEach(id => removeComunaLayer(id));
       loadedComunasRef.current.clear();
+      Array.from(loadedPoligonosRef.current).forEach(key => removePoligonoLayer(key));
+      loadedPoligonosRef.current.clear();
+      Array.from(loadedPlanReguladorRef.current).forEach(key => removePlanReguladorLayer(key));
+      loadedPlanReguladorRef.current.clear();
     } catch (err) {
-      console.warn('[reset] error removing comuna layers', err);
+      console.warn('[reset] error removing overlay layers', err);
     }
-    
+
     map.current.flyTo({
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
-      duration: 800,
+      duration: 900,
       essential: true,
     });
   }, [clearAllBounds]);
+
+  // Keep the hook's onEmpty callback pointing at the latest reset function.
+  resetViewRef.current = resetToInitialView;
+
+  // Full reset (explicit "Restablecer filtros"): overlay cleanup above plus
+  // consultation artifacts — PRIC boundary, PRIC/radial markers, zone focus.
+  const hardResetView = useCallback(() => {
+    resetToInitialView();
+    try {
+      removePricLimiteLayer();
+      pricLimiteEnabledRef.current = false;
+      if (pricMarkerRef.current) {
+        pricMarkerRef.current.remove();
+        pricMarkerRef.current = null;
+      }
+      if (radialMarkerRef.current) {
+        radialMarkerRef.current.remove();
+        radialMarkerRef.current = null;
+      }
+    } catch (err) {
+      console.warn('[reset] error clearing consultation layers', err);
+    }
+    setPricEvalZones(null);
+  }, [resetToInitialView, removePricLimiteLayer]);
+
 
 
   // SVG path mapping for icons (Lucide icons SVG paths)
@@ -2336,7 +2370,7 @@ export default function MapView({
   // Reset view only on rising edge of onResetView flag
   useEffect(() => {
     if (onResetView && !lastResetFlag.current) {
-      resetToInitialView();
+      hardResetView();
     }
     lastResetFlag.current = !!onResetView;
   }, [onResetView]);

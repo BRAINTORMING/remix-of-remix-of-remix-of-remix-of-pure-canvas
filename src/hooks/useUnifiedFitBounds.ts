@@ -10,6 +10,8 @@ interface FitBoundsOptions {
   maxZoom?: number;
   /** Animation duration */
   duration?: number;
+  /** Called when a fit is requested but no coordinates remain registered. */
+  onEmpty?: () => void;
 }
 
 /**
@@ -21,11 +23,15 @@ export function useUnifiedFitBounds(
   options: FitBoundsOptions = {}
 ) {
   const {
-    debounceMs = 200,
+    debounceMs = 90,
     padding = 80,
     maxZoom = 14,
-    duration = 1800,
+    duration = 900,
   } = options;
+
+  const onEmptyRef = useRef(options.onEmpty);
+  onEmptyRef.current = options.onEmpty;
+
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coordsRef = useRef<Map<string, [number, number][]>>(new Map());
@@ -71,7 +77,12 @@ export function useUnifiedFitBounds(
         allCoords.push(...coords);
       });
 
-      if (allCoords.length === 0) return;
+      if (allCoords.length === 0) {
+        // Nothing left on the map → let the owner restore the initial view.
+        onEmptyRef.current?.();
+        return;
+      }
+
 
       const effPadding = opts?.padding ?? padding;
       const effMaxZoom = opts?.maxZoom ?? maxZoom;
@@ -118,6 +129,17 @@ export function useUnifiedFitBounds(
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
+  /** True when at least one source still has coordinates registered. */
+  const hasCoords = useCallback((exclude?: string[]) => {
+    let found = false;
+    coordsRef.current.forEach((coords, source) => {
+      if (exclude?.includes(source)) return;
+      if (coords.length > 0) found = true;
+    });
+    return found;
+  }, []);
+
+
   /**
    * Get total count of visible elements across all sources.
    */
@@ -140,6 +162,8 @@ export function useUnifiedFitBounds(
     setSourceCoords,
     triggerFitBounds,
     clearAll,
+    hasCoords,
     getTotalCount,
   };
+
 }
