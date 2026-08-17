@@ -32,13 +32,15 @@ export const LAYER_DEFS: Record<Exclude<MonitoringLayerId, "wind" | "firms" | "f
   },
   solar: {
     id: "solar", label: "Radiación Solar", unit: "W/m²", variable: "shortwave_radiation",
-    min: 0, max: 1200,
+    min: 0, max: 1000,
+    // Debe coincidir 1:1 con LAYER_DEFS.solar en supabase/functions/_shared/weatherTile.ts
+    // (misma paleta = el tile PNG y la leyenda del cliente siempre calzan).
     stops: [
-      { v: 0,    c: "#1e3a8a" },
-      { v: 200,  c: "#22c55e" },
-      { v: 500,  c: "#facc15" },
-      { v: 800,  c: "#f97316" },
-      { v: 1100, c: "#b91c1c" },
+      { v: 0,    c: "#6F6F6F" },
+      { v: 250,  c: "#BD6759" },
+      { v: 500,  c: "#DA9669" },
+      { v: 750,  c: "#EBC28C" },
+      { v: 1000, c: "#FCF7BF" },
     ],
   },
   uv: {
