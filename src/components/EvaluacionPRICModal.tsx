@@ -7,6 +7,7 @@ import { Loader2, FileSearch, X, ChevronDown, ChevronRight, CheckCircle2, AlertT
 import { cn } from '@/lib/utils';
 import { externalSupabase } from '@/integrations/supabase/externalClient';
 import { useToast } from '@/hooks/use-toast';
+import ManualCoordinatesInput from './ManualCoordinatesInput';
 
 interface TipoProyectoPRIC {
   tipo: string;
@@ -651,6 +652,12 @@ export default function EvaluacionPRICModal({
               {pickMode ? "Cancelar" : "Activar"}
             </Button>
           </div>
+
+          {/* Alternativa: ingreso manual de coordenadas (mismo flujo que el mapa) */}
+          <ManualCoordinatesInput
+            eventName="pric:pointPicked"
+            buttonLabel="Usar estas coordenadas"
+          />
 
           {/* Lat + Lng + Sup */}
           <div className="grid grid-cols-3 gap-3">

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ManualCoordinatesInput from './ManualCoordinatesInput';
 
 
 // N8N webhook antiguo, dejado a propósito como referencia para poder comparar
