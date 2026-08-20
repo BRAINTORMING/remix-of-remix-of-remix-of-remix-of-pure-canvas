@@ -41,6 +41,7 @@ export default function RadialAnalysisControl({ selectedRegion }: RadialAnalysis
       const detail = (e as CustomEvent).detail as { lat: number; lng: number };
       if (!detail) return;
       setCenter({ lat: detail.lat, lng: detail.lng });
+      setActive(true);
       window.dispatchEvent(new CustomEvent("radial:pickMode", { detail: { enabled: false } }));
     };
     window.addEventListener("radial:pointPicked", handler);
