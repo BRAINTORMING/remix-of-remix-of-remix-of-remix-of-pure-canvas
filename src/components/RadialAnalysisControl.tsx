@@ -196,6 +196,16 @@ export default function RadialAnalysisControl({ selectedRegion }: RadialAnalysis
               </div>
             </div>
 
+            {/* Alternativa: coordenadas manuales — escribe en el mismo estado */}
+            {!pointLocked && (
+              <ManualCoordinatesInput
+                eventName="radial:pointPicked"
+                buttonLabel="Fijar punto central"
+                initial={center}
+              />
+            )}
+
+
             {/* Radius slider */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
