@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ManualCoordinatesInput from './ManualCoordinatesInput';
 
 
 // N8N webhook antiguo, dejado a propósito como referencia para poder comparar
@@ -922,6 +923,14 @@ export default function OportunidadesPanel({
                 {isPickingPoint ? 'Cancelar' : currentPoint ? 'Cambiar' : 'Activar'}
               </Button>
             </div>
+
+            {/* Alternativa: coordenadas manuales (mismo estado y mismo flujo) */}
+            <ManualCoordinatesInput
+              eventName="pric:pointPicked"
+              buttonLabel="Usar estas coordenadas"
+              initial={currentPoint ?? null}
+            />
+
 
             {/* Formulario por modo */}
             {modo === 'exploracion' && (

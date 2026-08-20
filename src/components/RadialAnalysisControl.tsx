@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { showPaidLockToast } from "@/lib/planLocks";
+import ManualCoordinatesInput from "./ManualCoordinatesInput";
 
 interface RadialAnalysisControlProps {
   selectedRegion?: string;
@@ -40,6 +41,7 @@ export default function RadialAnalysisControl({ selectedRegion }: RadialAnalysis
       const detail = (e as CustomEvent).detail as { lat: number; lng: number };
       if (!detail) return;
       setCenter({ lat: detail.lat, lng: detail.lng });
+      setActive(true);
       window.dispatchEvent(new CustomEvent("radial:pickMode", { detail: { enabled: false } }));
     };
     window.addEventListener("radial:pointPicked", handler);
@@ -195,6 +197,16 @@ export default function RadialAnalysisControl({ selectedRegion }: RadialAnalysis
                 )}
               </div>
             </div>
+
+            {/* Alternativa: coordenadas manuales — escribe en el mismo estado */}
+            {!pointLocked && (
+              <ManualCoordinatesInput
+                eventName="radial:pointPicked"
+                buttonLabel="Fijar punto central"
+                initial={center}
+              />
+            )}
+
 
             {/* Radius slider */}
             <div className="space-y-2 pt-1">
