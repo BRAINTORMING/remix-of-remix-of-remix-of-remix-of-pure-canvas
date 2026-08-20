@@ -923,6 +923,14 @@ export default function OportunidadesPanel({
               </Button>
             </div>
 
+            {/* Alternativa: coordenadas manuales (mismo estado y mismo flujo) */}
+            <ManualCoordinatesInput
+              eventName="pric:pointPicked"
+              buttonLabel="Usar estas coordenadas"
+              initial={currentPoint ?? null}
+            />
+
+
             {/* Formulario por modo */}
             {modo === 'exploracion' && (
               <div className="space-y-1.5">
