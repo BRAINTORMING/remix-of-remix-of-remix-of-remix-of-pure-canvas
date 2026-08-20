@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { showPaidLockToast } from "@/lib/planLocks";
+import ManualCoordinatesInput from "./ManualCoordinatesInput";
 
 interface RadialAnalysisControlProps {
   selectedRegion?: string;
