@@ -1228,6 +1228,8 @@ export default function OportunidadesPanel({
                   );
                 })}
 
+                {/* Monitoreo Territorial · Tiempo (aditivo) */}
+                <WeatherContextCard data={weatherData} loading={weatherLoading} defaultOpen />
               </div>
             )}
 
