@@ -102,7 +102,11 @@ interface Candidato {
   detectamos?: Detectamos;
   capas_detectadas?: CapasDetectadas;
   narrativa?: Narrativa;
-
+  // Campos nuevos del backend (modo camino_minimo)
+  nombre_descriptivo?: string;
+  descripcion_corta?: string;
+  categoria_uso?: string;
+  distancia_km?: number | null;
 }
 
 
