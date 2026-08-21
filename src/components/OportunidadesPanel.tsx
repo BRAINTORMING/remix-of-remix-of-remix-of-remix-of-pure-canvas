@@ -29,6 +29,8 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ManualCoordinatesInput from './ManualCoordinatesInput';
+import WeatherContextCard from './WeatherContextCard';
+import { useZoneWeatherContext, type ZoneWeatherRequest } from '@/hooks/useZoneWeatherContext';
 
 
 // N8N webhook antiguo, dejado a propósito como referencia para poder comparar
@@ -480,6 +482,9 @@ export default function OportunidadesPanel({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Candidato resaltado — sincroniza tarjeta <-> marcador del mapa.
   const [candidatoActivo, setCandidatoActivo] = useState<string | null>(null);
+  // Monitoreo Territorial · Tiempo (aditivo, no bloquea el dictamen)
+  const [weatherReq, setWeatherReq] = useState<ZoneWeatherRequest | null>(null);
+  const { data: weatherData, loading: weatherLoading } = useZoneWeatherContext(weatherReq);
 
   useEffect(() => {
     const onSelect = (e: Event) => {
@@ -632,6 +637,18 @@ export default function OportunidadesPanel({
     if (!modo) return;
     setErrorMsg(null);
     setResponse(null);
+    setWeatherReq(null);
+
+    // Contexto climático complementario — se dispara en paralelo y nunca
+    // bloquea el dictamen (ver useZoneWeatherContext).
+    if (currentPoint) {
+      setWeatherReq({
+        lat: currentPoint.lat,
+        lon: currentPoint.lng,
+        radio_km: modo === 'exploracion' ? radioKm : null,
+        categoria: modo === 'punto_fijo' ? categoria || null : null,
+      });
+    }
 
     if (modo !== 'exploracion' && modo !== 'camino_minimo' && !puntoValido) {
       setErrorMsg('Selecciona una ubicación en el mapa.');
@@ -836,6 +853,7 @@ export default function OportunidadesPanel({
                   onClick={() => {
                     setModo(k);
                     setResponse(null);
+                    setWeatherReq(null);
                     setErrorMsg(null);
                   }}
                   className={cn(
@@ -1210,6 +1228,8 @@ export default function OportunidadesPanel({
                   );
                 })}
 
+                {/* Monitoreo Territorial · Tiempo (aditivo) */}
+                <WeatherContextCard data={weatherData} loading={weatherLoading} defaultOpen />
               </div>
             )}
 
@@ -1258,6 +1278,9 @@ export default function OportunidadesPanel({
                     </li>
                   ))}
                 </ol>
+
+                {/* Monitoreo Territorial · Tiempo (aditivo, colapsada) */}
+                <WeatherContextCard data={weatherData} loading={weatherLoading} />
               </div>
             )}
 
@@ -1347,6 +1370,11 @@ export default function OportunidadesPanel({
                     </ul>
                   </details>
                 )}
+
+                {/* Monitoreo Territorial · Tiempo (aditivo) */}
+                <WeatherContextCard data={weatherData} loading={weatherLoading} categoria={categoria} />
+
+
 
                 {response.contexto_enriquecido?.activos_cercanos && response.contexto_enriquecido.activos_cercanos.length > 0 && (
                   <details className="rounded-lg border border-border bg-background/50 p-2.5">
