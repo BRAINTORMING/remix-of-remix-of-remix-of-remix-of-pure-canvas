@@ -1276,6 +1276,9 @@ export default function OportunidadesPanel({
                     </li>
                   ))}
                 </ol>
+
+                {/* Monitoreo Territorial · Tiempo (aditivo, colapsada) */}
+                <WeatherContextCard data={weatherData} loading={weatherLoading} />
               </div>
             )}
 
