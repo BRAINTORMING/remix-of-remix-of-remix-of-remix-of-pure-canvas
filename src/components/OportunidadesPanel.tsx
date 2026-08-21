@@ -480,6 +480,9 @@ export default function OportunidadesPanel({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Candidato resaltado — sincroniza tarjeta <-> marcador del mapa.
   const [candidatoActivo, setCandidatoActivo] = useState<string | null>(null);
+  // Monitoreo Territorial · Tiempo (aditivo, no bloquea el dictamen)
+  const [weatherReq, setWeatherReq] = useState<ZoneWeatherRequest | null>(null);
+  const { data: weatherData, loading: weatherLoading } = useZoneWeatherContext(weatherReq);
 
   useEffect(() => {
     const onSelect = (e: Event) => {
