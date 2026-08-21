@@ -637,6 +637,18 @@ export default function OportunidadesPanel({
     if (!modo) return;
     setErrorMsg(null);
     setResponse(null);
+    setWeatherReq(null);
+
+    // Contexto climático complementario — se dispara en paralelo y nunca
+    // bloquea el dictamen (ver useZoneWeatherContext).
+    if (currentPoint) {
+      setWeatherReq({
+        lat: currentPoint.lat,
+        lon: currentPoint.lng,
+        radio_km: modo === 'exploracion' ? radioKm : null,
+        categoria: modo === 'punto_fijo' ? categoria || null : null,
+      });
+    }
 
     if (modo !== 'exploracion' && modo !== 'camino_minimo' && !puntoValido) {
       setErrorMsg('Selecciona una ubicación en el mapa.');
