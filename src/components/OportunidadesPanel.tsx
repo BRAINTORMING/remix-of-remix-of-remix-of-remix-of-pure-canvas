@@ -853,6 +853,7 @@ export default function OportunidadesPanel({
                   onClick={() => {
                     setModo(k);
                     setResponse(null);
+                    setWeatherReq(null);
                     setErrorMsg(null);
                   }}
                   className={cn(
