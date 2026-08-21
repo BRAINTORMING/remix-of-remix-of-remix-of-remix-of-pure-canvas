@@ -29,6 +29,8 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ManualCoordinatesInput from './ManualCoordinatesInput';
+import WeatherContextCard from './WeatherContextCard';
+import { useZoneWeatherContext, type ZoneWeatherRequest } from '@/hooks/useZoneWeatherContext';
 
 
 // N8N webhook antiguo, dejado a propósito como referencia para poder comparar
