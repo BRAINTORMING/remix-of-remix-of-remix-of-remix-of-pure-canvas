@@ -1366,6 +1366,11 @@ export default function OportunidadesPanel({
                   </details>
                 )}
 
+                {/* Monitoreo Territorial · Tiempo (aditivo) */}
+                <WeatherContextCard data={weatherData} loading={weatherLoading} categoria={categoria} />
+
+
+
                 {response.contexto_enriquecido?.activos_cercanos && response.contexto_enriquecido.activos_cercanos.length > 0 && (
                   <details className="rounded-lg border border-border bg-background/50 p-2.5">
                     <summary className="cursor-pointer text-xs font-semibold text-foreground">
