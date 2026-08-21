@@ -1245,7 +1245,14 @@ export default function OportunidadesPanel({
                   Esta es una estimación rápida — haz clic en un resultado para evaluarlo en detalle.
                 </p>
                 <ol className="space-y-1.5">
-                  {response.ruta.map((c, i) => (
+                  {response.ruta.map((c, i) => {
+                    const tieneNombre = c.nombre_descriptivo && c.nombre_descriptivo.trim().length > 0;
+                    const nombreDuplicaEtiqueta =
+                      tieneNombre &&
+                      c.etiqueta &&
+                      c.nombre_descriptivo!.trim().toLowerCase() === c.etiqueta.trim().toLowerCase();
+                    const tieneDistancia = c.distancia_km != null && !Number.isNaN(c.distancia_km);
+                    return (
                     <li
                       key={c.id ?? i}
                       onClick={() => precargarModoB(c)}
@@ -1254,9 +1261,41 @@ export default function OportunidadesPanel({
                       <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                         {i + 1}
                       </span>
-                      <span className="text-xs flex-1 truncate" title={c.nombre ?? c.etiqueta}>
-                        {c.nombre ?? c.etiqueta ?? 'Candidato'}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {tieneNombre && !nombreDuplicaEtiqueta && (
+                            <span className="text-xs font-medium text-foreground truncate" title={c.nombre_descriptivo}>
+                              {c.nombre_descriptivo}
+                            </span>
+                          )}
+                          {c.etiqueta && (
+                            <span className="inline-flex items-center text-[10px] font-semibold text-muted-foreground bg-muted/60 rounded px-1 py-0.5 flex-shrink-0">
+                              {c.etiqueta}
+                            </span>
+                          )}
+                          {c.descripcion_corta && c.descripcion_corta.trim().length > 0 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className="text-muted-foreground/70 text-xs leading-none flex-shrink-0 cursor-help"
+                                  aria-label="Más información"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  ⓘ
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[240px] text-[11px]">
+                                {c.descripcion_corta}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        {tieneDistancia && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {c.distancia_km} km del punto de origen
+                          </div>
+                        )}
+                      </div>
                       <span
                         className="text-sm leading-none flex-shrink-0"
                         aria-label={`Costo relativo ${c.nivel ?? ''}`}
@@ -1275,12 +1314,10 @@ export default function OportunidadesPanel({
                         </Tooltip>
                       )}
 
-                      <span className="text-[10px] text-muted-foreground flex-shrink-0">
-                        {formatDistancia(c.distancia_m)}
-                      </span>
                       <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                     </li>
-                  ))}
+                    );
+                  })}
                 </ol>
 
                 {/* Monitoreo Territorial · Tiempo (aditivo, colapsada) */}
